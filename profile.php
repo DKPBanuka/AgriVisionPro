@@ -200,9 +200,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <!-- Header Section -->
             <div class="bg-gradient-to-r from-blue-500 to-blue-600 py-6 px-8 text-white">
                 <div class="flex items-center justify-between">
-                    <div>
-                        <h1 class="text-2xl font-bold">Profile Settings</h1>
-                        <p class="text-blue-100 mt-1">Manage your personal information</p>
+                    <div class="flex items-center justify-center space-x-4">
+                    <img src="images/logo.png" alt="Logo" class="h-10 w-auto">
+                        <div class="text-center w-full">
+                            <h1 class="text-2xl font-bold text-center">Profile Settings</h1>
+                            <p class="text-blue-100 mt-1 text-center">Manage your personal information</p>
+                        </div>
+                        
                     </div>
                     <div class="flex items-center space-x-2">
                         <i class="fas fa-user-circle text-2xl"></i>

@@ -66,6 +66,7 @@ function getInitials($name) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AgriVision Pro | Modern Farm Management</title>
+    <link rel="icon" href="./images/logo.png" type="image/png">
     <link href="./dist/output.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -124,10 +125,8 @@ function getInitials($name) {
         <!-- Dynamic Sidebar -->
         <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl">
             <div class="p-4 flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    </svg>
+                <div class="w-12 h-12 rounded-full flex items-center justify-center">
+                    <img src="./images/logo.png" alt="App Logo" class="h-10 w-10 object-contain">
                 </div>
                 <h1 class="text-xl font-bold">AgriVision Pro</h1>
             </div>

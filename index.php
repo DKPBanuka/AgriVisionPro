@@ -106,9 +106,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="bg-white rounded-xl card-shadow overflow-hidden">
             <!-- Header Section -->
             <div class="bg-gradient-to-r from-blue-400 to-blue-700 p-6 text-center text-white">
-                <div class="flex justify-center mb-3">
-                    <i class="fas fa-leaf text-4xl"></i>
-                </div>
+            <div class="w-12 h-12 flex items-center justify-center mx-auto">
+                <img src="./images/logo.png" alt="App Logo" class="h-10 w-10 object-contain">
+            </div>
                 <h1 class="text-2xl font-bold">AgriVision Pro</h1>
                 <p class="text-sm opacity-90 mt-1">Smart Farming Management System</p>
             </div>
