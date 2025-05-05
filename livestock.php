@@ -371,7 +371,7 @@ checkAuthentication();
     const DB_NAME = 'AgriVisionProDB';
     const STORE_NAME = 'livestock';
     let db;
-    let DB_VERSION = 2; // Start with version 40
+    let DB_VERSION = 3; // Start with version 40
 
     // Add this at the very beginning of your script (before initApp())
 function setupMessageSystem() {

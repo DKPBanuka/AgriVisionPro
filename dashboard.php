@@ -519,7 +519,7 @@ function getInitials($name) {
     <script>
         // Database configuration
         const DB_NAME = 'AgriVisionProDB';
-        const DB_VERSION = 2; // Incremented to fix version change issues
+        const DB_VERSION = 3; // Incremented to fix version change issues
         const STORES = {
             CROPS: 'crops',
             LIVESTOCK: 'livestock',
