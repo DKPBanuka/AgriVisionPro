@@ -298,7 +298,7 @@ checkAuthentication();
         document.addEventListener('DOMContentLoaded', function() {
             // Database configuration
             const DB_NAME = 'AgriVisionProDB';
-            const DB_VERSION = 3;
+            const DB_VERSION = 4;
             const STORE_NAME = 'tasks';
             let db;
 

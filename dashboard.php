@@ -133,7 +133,7 @@ function getInitials($name) {
             
             <nav class="mt-8">
                 <div class="px-4 space-y-1">
-                    <a href="index.php" class="flex items-center px-4 py-3 rounded-lg bg-blue-500 bg-opacity-30 text-white-100 hover:text-white group">
+                    <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg bg-blue-500 bg-opacity-30 text-white-100 hover:text-white group">
                         <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
@@ -519,7 +519,7 @@ function getInitials($name) {
     <script>
         // Database configuration
         const DB_NAME = 'AgriVisionProDB';
-        const DB_VERSION = 3; // Incremented to fix version change issues
+        const DB_VERSION = 4; // Incremented to fix version change issues
         const STORES = {
             CROPS: 'crops',
             LIVESTOCK: 'livestock',

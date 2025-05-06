@@ -13,6 +13,23 @@ $current_user = [
     'profile_picture' => ''
 ];
 
+// Try to get profile data from database
+try {
+    $stmt = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($profile) {
+        // Update with profile data if available
+        $current_user['name'] = $profile['full_name'] ?? $current_user['name'];
+        $current_user['email'] = $profile['email'] ?? $current_user['email'];
+        $current_user['profile_picture'] = $profile['profile_picture'] ?? '';
+    }
+} catch (PDOException $e) {
+    error_log("Error fetching profile: " . $e->getMessage());
+    // Continue with session data if there's an error
+}
+
 // Helper function to get initials from name
 function getInitials($name) {
     $names = explode(' ', $name);
@@ -49,7 +66,7 @@ function getInitials($name) {
             transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
         }
         .modal {
-            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: 50;
         }
         .status-growing {
             color: #10B981;
@@ -159,6 +176,71 @@ function getInitials($name) {
             font-size: 0.75rem;
             font-weight: 600;
             display: inline-block;
+        }
+        /* Add to your existing styles */
+.modal {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Ensure modal content doesn't exceed viewport */
+
+
+/* Scrollable area styling */
+.max-h-\[calc\(100vh-200px\)\] {
+    max-height: calc(100vh - 200px);
+}
+
+/* Sticky header and footer */
+.sticky {
+    position: sticky;
+}
+
+.top-0 {
+    top: 0;
+}
+
+.bottom-0 {
+    bottom: 0;
+}
+
+/* Smooth scrolling */
+.overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Better scrollbar for webkit browsers */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+@media (min-width: 640px) {
+            .sm\:max-w-2xl {
+                max-width: 40rem;
+            }
+        }
+        @media (min-width: 768px) {
+            .md\:max-w-2xl {
+                max-width: 50rem;
+            }
+        }
+        @media (min-width: 1024px) {
+            .lg\:max-w-2xl {
+                max-width: 64rem;
+            }
         }
     </style>
 </head>
@@ -429,7 +511,7 @@ function getInitials($name) {
                 
                 <!-- Crop Management -->
                 <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center  ">
                         <div class="flex items-center space-x-4">
                             <div class="relative w-64">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -534,290 +616,302 @@ function getInitials($name) {
 
     <!-- Replace the existing modals with these improved versions -->
 
-<!-- Improved Add/Edit Crop Modal -->
-<div id="crop-modal" class="fixed z-50 inset-0 overflow-y-auto hidden modal">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
-            <div>
-                <h3 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4">Add New Crop</h3>
-                <form id="crop-form">
-                    <input type="hidden" id="crop-id">
-                    <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
-                        <!-- Crop Basic Info Section -->
-                        <div class="sm:col-span-6 border-b border-gray-200 pb-4 mb-4">
-                            <h4 class="text-lg font-medium text-gray-800 mb-3">Basic Information</h4>
-                            <div class="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-6">
-                                <div class="sm:col-span-6">
-                                    <label for="crop-name" class="block text-sm font-medium text-gray-700 flex items-center">
-                                        Crop Name <span class="text-red-500 ml-1">*</span>
-                                    </label>
-                                    <input type="text" id="crop-name" required 
-                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                </div>
-                                
-                                <div class="sm:col-span-3">
-                                    <label for="crop-variety" class="block text-sm font-medium text-gray-700">Variety</label>
-                                    <input type="text" id="crop-variety" 
-                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                </div>
-                                
-                                <div class="sm:col-span-3">
-                                    <label for="crop-field" class="block text-sm font-medium text-gray-700 flex items-center">
-                                        Field/Location <span class="text-red-500 ml-1">*</span>
-                                    </label>
-                                    <input type="text" id="crop-field" required 
-                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Crop Details Section -->
-                        <div class="sm:col-span-6 border-b border-gray-200 pb-4 mb-4">
-                            <h4 class="text-lg font-medium text-gray-800 mb-3">Crop Details</h4>
-                            <div class="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-6">
-                                <div class="sm:col-span-2">
-                                    <label for="crop-area" class="block text-sm font-medium text-gray-700 flex items-center">
-                                        Area (ha) <span class="text-red-500 ml-1">*</span>
-                                    </label>
-                                    <div class="mt-1 relative rounded-md shadow-sm">
-                                        <input type="number" step="0.01" min="0" id="crop-area" required 
-                                               class="block w-full pr-12 border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                            <span class="text-gray-500 sm:text-sm">ha</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="sm:col-span-2">
-                                    <label for="crop-status" class="block text-sm font-medium text-gray-700 flex items-center">
-                                        Status <span class="text-red-500 ml-1">*</span>
-                                    </label>
-                                    <select id="crop-status" required 
-                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                        <option value="growing">Growing</option>
-                                        <option value="harvested">Harvested</option>
-                                        <option value="planned">Planned</option>
-                                        <option value="problem">Needs Attention</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="sm:col-span-2">
-                                    <label for="crop-yield" class="block text-sm font-medium text-gray-700">Expected Yield</label>
-                                    <div class="mt-1 relative rounded-md shadow-sm">
-                                        <input type="number" step="1" min="0" id="crop-yield" 
-                                               class="block w-full pr-12 border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                            <span class="text-gray-500 sm:text-sm">kg/ha</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="sm:col-span-3">
-                                    <label for="crop-planted-date" class="block text-sm font-medium text-gray-700 flex items-center">
-                                        Planted Date <span class="text-red-500 ml-1">*</span>
-                                    </label>
-                                    <input type="date" id="crop-planted-date" required 
-                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                </div>
-                                
-                                <div class="sm:col-span-3">
-                                    <label for="crop-harvest-date" class="block text-sm font-medium text-gray-700">Harvest Date</label>
-                                    <input type="date" id="crop-harvest-date" 
-                                           class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Notes and Image Section -->
-                        <div class="sm:col-span-6">
-                            <label for="crop-notes" class="block text-sm font-medium text-gray-700">Notes</label>
-                            <textarea id="crop-notes" rows="3" 
-                                      class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
-                        </div>
-                        
-                        <div class="sm:col-span-6">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Crop Image</label>
-                            <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md relative">
-                                <div id="image-upload-area" class="space-y-1 text-center">
-                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                    </svg>
-                                    <div class="flex text-sm text-gray-600 justify-center">
-                                        <label for="crop-image" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                                            <span>Upload a file</span>
-                                            <input id="crop-image" name="crop-image" type="file" class="sr-only" accept="image/*">
-                                        </label>
-                                        <p class="pl-1">or drag and drop</p>
-                                    </div>
-                                    <p class="text-xs text-gray-500">PNG, JPG up to 5MB</p>
-                                </div>
-                                <div id="image-preview" class="hidden absolute inset-0 flex items-center justify-center">
-                                    <img id="preview-image" src="#" alt="Preview" class="max-h-full max-w-full object-contain">
-                                    <button type="button" id="remove-image" class="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100">
-                                        <svg class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-                <button type="button" id="save-crop" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:col-start-2 sm:text-sm">
-                    <i class="fas fa-save mr-2"></i> Save Crop
-                </button>
-                <button type="button" id="cancel-crop" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm">
-                    <i class="fas fa-times mr-2"></i> Cancel
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Improved Crop Details Modal -->
-<div id="crop-details-modal" class="fixed z-50 inset-0 overflow-y-auto hidden modal">
-    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
-            <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
-        </div>
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full sm:p-6">
-            <div>
-                <div class="flex justify-between items-start">
+        <!-- Improved Add/Edit Crop Modal -->
+        <div id="crop-modal" class="fixed z-50 inset-0 overflow-y-auto hidden modal">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div class="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full sm:p-6">
                     <div>
-                        <h3 id="crop-details-title" class="text-2xl font-bold text-gray-800">Crop Details</h3>
-                        <p id="crop-details-subtitle" class="mt-1 text-sm text-gray-500">Detailed information about this crop</p>
-                    </div>
-                    <button id="close-details" class="text-gray-400 hover:text-gray-500">
-                        <i class="fas fa-times text-xl"></i>
-                    </button>
-                </div>
-                
-                <div class="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                    <!-- Image Column -->
-                    <div class="sm:col-span-2">
-                        <div class="h-64 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
-                            <img id="crop-details-image" src="https://source.unsplash.com/random/300x300/?farm" alt="Crop image" class="w-full h-full object-cover">
-                        </div>
-                        <div class="mt-4">
-                            <h4 class="text-sm font-medium text-gray-700 mb-2">Crop Timeline</h4>
-                            <div class="relative pt-1">
-                                <div class="flex mb-2 items-center justify-between">
-                                    <div>
-                                        <span id="timeline-status" class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
-                                            Planted
-                                        </span>
-                                    </div>
-                                    <div class="text-right">
-                                        <span id="timeline-days" class="text-xs font-semibold inline-block text-blue-600">
-                                            0 of 0 days
-                                        </span>
+                        <h3 id="modal-title" class="text-2xl font-bold text-gray-800 mb-4">Add New Crop</h3>
+                        <!-- Scrollable content area -->
+                        <div class="max-h-[calc(100vh-200px)] overflow-y-auto px-4 sm:px-6">
+                        <form id="crop-form">
+                            <input type="hidden" id="crop-id">
+                            <div class="grid grid-cols-1 gap-y-6 gap-x-6 sm:grid-cols-6">
+                                <!-- Crop Basic Info Section -->
+                                <div class="sm:col-span-6 border-b border-gray-200 pb-4 mb-4">
+                                    <h4 class="text-lg font-medium text-gray-800 mb-3">Basic Information</h4>
+                                    <div class="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-6">
+                                        <div class="sm:col-span-6">
+                                            <label for="crop-name" class="block text-sm font-medium text-gray-700 flex items-center">
+                                                Crop Name <span class="text-red-500 ml-1">*</span>
+                                            </label>
+                                            <input type="text" id="crop-name" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        </div>
+                                        
+                                        <div class="sm:col-span-3">
+                                            <label for="crop-variety" class="block text-sm font-medium text-gray-700">Variety</label>
+                                            <input type="text" id="crop-variety" 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        </div>
+                                        
+                                        <div class="sm:col-span-3">
+                                            <label for="crop-field" class="block text-sm font-medium text-gray-700 flex items-center">
+                                                Field/Location <span class="text-red-500 ml-1">*</span>
+                                            </label>
+                                            <input type="text" id="crop-field" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
-                                    <div id="timeline-progress" style="width: 0%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
-                                </div>
-                                <div class="flex justify-between text-xs text-gray-600">
-                                    <div>
-                                        <span id="timeline-planted">-</span>
+                                
+                                <!-- Crop Details Section -->
+                                <div class="sm:col-span-6 border-b border-gray-200 pb-4 mb-4">
+                                    <h4 class="text-lg font-medium text-gray-800 mb-3">Crop Details</h4>
+                                    <div class="grid grid-cols-1 gap-y-4 gap-x-6 sm:grid-cols-6">
+                                        <div class="sm:col-span-2">
+                                            <label for="crop-area" class="block text-sm font-medium text-gray-700 flex items-center">
+                                                Area (ha) <span class="text-red-500 ml-1">*</span>
+                                            </label>
+                                            <div class="mt-1 relative rounded-md shadow-sm">
+                                                <input type="number" step="0.01" min="0" id="crop-area" required 
+                                                    class="block w-full pr-12 border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-sm">ha</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="sm:col-span-2">
+                                            <label for="crop-status" class="block text-sm font-medium text-gray-700 flex items-center">
+                                                Status <span class="text-red-500 ml-1">*</span>
+                                            </label>
+                                            <select id="crop-status" required 
+                                                    class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                <option value="growing">Growing</option>
+                                                <option value="harvested">Harvested</option>
+                                                <option value="planned">Planned</option>
+                                                <option value="problem">Needs Attention</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="sm:col-span-2">
+                                            <label for="crop-yield" class="block text-sm font-medium text-gray-700">Expected Yield</label>
+                                            <div class="mt-1 relative rounded-md shadow-sm">
+                                                <input type="number" step="1" min="0" id="crop-yield" 
+                                                    class="block w-full pr-12 border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                    <span class="text-gray-500 sm:text-sm">kg/ha</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="sm:col-span-3">
+                                            <label for="crop-planted-date" class="block text-sm font-medium text-gray-700 flex items-center">
+                                                Planted Date <span class="text-red-500 ml-1">*</span>
+                                            </label>
+                                            <input type="date" id="crop-planted-date" required 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        </div>
+                                        
+                                        <div class="sm:col-span-3">
+                                            <label for="crop-harvest-date" class="block text-sm font-medium text-gray-700">Harvest Date</label>
+                                            <input type="date" id="crop-harvest-date" 
+                                                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        </div>
                                     </div>
-                                    <div>
-                                        <span id="timeline-harvest">-</span>
+                                </div>
+                                
+                                <!-- Notes and Image Section -->
+                                <div class="sm:col-span-6">
+                                    <label for="crop-notes" class="block text-sm font-medium text-gray-700">Notes</label>
+                                    <textarea id="crop-notes" rows="3" 
+                                            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"></textarea>
+                                </div>
+                                
+                                <div class="sm:col-span-6">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Crop Image</label>
+                                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md relative">
+                                        <div id="image-upload-area" class="space-y-1 text-center">
+                                            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
+                                            <div class="flex text-sm text-gray-600 justify-center">
+                                                <label for="crop-image" class="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                                                    <span>Upload a file</span>
+                                                    <input id="crop-image" name="crop-image" type="file" class="sr-only" accept="image/*">
+                                                </label>
+                                                <p class="pl-1">or drag and drop</p>
+                                            </div>
+                                            <p class="text-xs text-gray-500">PNG, JPG up to 5MB</p>
+                                        </div>
+                                        <div id="image-preview" class="hidden absolute inset-0 flex items-center justify-center">
+                                            <img id="preview-image" src="#" alt="Preview" class="max-h-full max-w-full object-contain">
+                                            <button type="button" id="remove-image" class="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-100">
+                                                <svg class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </form>
                     </div>
-                    
-                    <!-- Details Column -->
-                    <div class="sm:col-span-4">
-                        <div class="bg-gray-50 rounded-lg p-4">
-                            <div class="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-2">
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Crop Name</label>
-                                    <p id="crop-details-name" class="mt-1 text-sm font-medium text-gray-900">-</p>
-                                </div>
-                                
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Variety</label>
-                                    <p id="crop-details-variety" class="mt-1 text-sm text-gray-900">-</p>
-                                </div>
-                                
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Field/Location</label>
-                                    <p id="crop-details-field" class="mt-1 text-sm text-gray-900">-</p>
-                                </div>
-                                
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Area</label>
-                                    <p id="crop-details-area" class="mt-1 text-sm text-gray-900">-</p>
-                                </div>
-                                
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Status</label>
-                                    <p id="crop-details-status" class="mt-1 text-sm text-gray-900">-</p>
-                                </div>
-                                
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Expected Yield</label>
-                                    <p id="crop-details-yield" class="mt-1 text-sm text-gray-900">-</p>
-                                </div>
-                                
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Planted Date</label>
-                                    <p id="crop-details-planted-date" class="mt-1 text-sm text-gray-900">-</p>
-                                </div>
-                                
-                                <div class="sm:col-span-1">
-                                    <label class="block text-sm font-medium text-gray-500">Harvest Date</label>
-                                    <p id="crop-details-harvest-date" class="mt-1 text-sm text-gray-900">-</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-4 bg-gray-50 rounded-lg p-4">
-                            <label class="block text-sm font-medium text-gray-500 mb-2">Notes</label>
-                            <p id="crop-details-notes" class="text-sm text-gray-900">No notes available</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Activities Section -->
-                    <div class="sm:col-span-6">
-                        <div class="border-t border-gray-200 pt-4">
-                            <h4 class="text-lg font-medium text-gray-800 mb-3">Recent Activities</h4>
-                            <div id="crop-activities" class="space-y-4">
-                                <div class="text-center py-4 text-sm text-gray-500">
-                                    <i class="fas fa-spinner fa-spin mr-2"></i> Loading activities...
-                                </div>
-                            </div>
-                        </div>
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200 sticky bottom-0">
+                        <button type="button" id="save-crop" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Save Crop
+                        </button>
+                        <button type="button" id="cancel-crop" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            Cancel
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-                <button type="button" id="edit-crop-from-details" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:col-start-2 sm:text-sm">
-                    <i class="fas fa-edit mr-2"></i> Edit Crop
-                </button>
-                <button type="button" id="close-details-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm">
-                    <i class="fas fa-times mr-2"></i> Close
-                </button>
+        </div>
+
+        <!-- View Crop Details Modal -->
+        <div id="crop-details-modal" class="fixed z-50 inset-0 overflow-y-auto hidden modal">
+            <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full">
+                    
+                    <!-- Fixed Header -->
+                    <div class="bg-white px-6 pt-5 pb-4 border-b border-gray-200 sticky top-0 z-50">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 id="crop-details-title" class="text-2xl font-bold text-gray-800">Crop Details</h3>
+                                <p id="crop-details-subtitle" class="mt-1 text-sm text-gray-500">Detailed information about this crop</p>
+                            </div>
+                            <button id="close-details" class="text-gray-400 hover:text-gray-500 focus:outline-none">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Scrollable Content Area -->
+                    <div class="max-h-[calc(100vh-200px)] overflow-y-auto px-6 py-4">
+                        <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                            
+                            <!-- Left Column (Image & Timeline) -->
+                            <div class="sm:col-span-2">
+                                <div class="h-64 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center">
+                                    <img id="crop-details-image" src="https://source.unsplash.com/random/300x300/?farm" alt="Crop image" class="w-full h-full object-cover">
+                                </div>
+                                
+                                <!-- Timeline Section -->
+                                <div class="mt-6 bg-gray-50 p-4 rounded-lg">
+                                    <h4 class="text-sm font-medium text-gray-700 mb-3">Crop Timeline</h4>
+                                    <div class="relative pt-1">
+                                        <div class="flex mb-2 items-center justify-between">
+                                            <div>
+                                                <span id="timeline-status" class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                                                    Planted
+                                                </span>
+                                            </div>
+                                            <div class="text-right">
+                                                <span id="timeline-days" class="text-xs font-semibold inline-block text-blue-600">
+                                                    0 of 0 days
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                                            <div id="timeline-progress" style="width: 0%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-600">
+                                            <div>
+                                                <span id="timeline-planted">-</span>
+                                            </div>
+                                            <div>
+                                                <span id="timeline-harvest">-</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Column (Details) -->
+                            <div class="sm:col-span-4">
+                                <!-- Basic Info Card -->
+                                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                                    <h4 class="text-lg font-medium text-gray-800 mb-3">Basic Information</h4>
+                                    <div class="grid grid-cols-1 gap-y-4 gap-x-4 sm:grid-cols-2">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Crop Name</label>
+                                            <p id="crop-details-name" class="mt-1 text-sm font-medium text-gray-900">-</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Variety</label>
+                                            <p id="crop-details-variety" class="mt-1 text-sm text-gray-900">-</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Field/Location</label>
+                                            <p id="crop-details-field" class="mt-1 text-sm text-gray-900">-</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Area</label>
+                                            <p id="crop-details-area" class="mt-1 text-sm text-gray-900">-</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Status</label>
+                                            <p id="crop-details-status" class="mt-1 text-sm font-medium text-gray-900">-</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Expected Yield</label>
+                                            <p id="crop-details-yield" class="mt-1 text-sm text-gray-900">-</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Planted Date</label>
+                                            <p id="crop-details-planted-date" class="mt-1 text-sm text-gray-900">-</p>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-500">Harvest Date</label>
+                                            <p id="crop-details-harvest-date" class="mt-1 text-sm text-gray-900">-</p>
+                                        </div>
+                                    </div>
+                                </div>
+                    
+                                <!-- Notes Card -->
+                                <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                                    <h4 class="text-lg font-medium text-gray-800 mb-3">Notes</h4>
+                                    <p id="crop-details-notes" class="text-sm text-gray-900">No notes available</p>
+                                </div>
+                            </div>
+                      </div>  
+                            <!-- Full Width Activities Section -->
+                                <div class="border-t border-gray-200 ">
+                                    <div class="px-5 pt-4 pb-4 bg-white sticky top-0 z-50 flex justify-center">
+                                       
+                                            <h4 class="text-2xl font-bold text-gray-800 mb-3 ">Recent Activities</h4>
+                                        
+                                    </div>
+                                    <div id="crop-activities" class="space-y-4">
+                                        <div class="text-center py-4 text-sm text-gray-500 flex justify-center items-start">
+                                           
+                                                <i class="fas fa-spinner fa-spin mr-2"></i> Loading activities...
+                                        </div>
+                                    </div>
+                                </div>
+                        
+                    </div>
+                    
+                    <!-- Fixed Footer -->
+                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200 sticky bottom-0">
+                        <button type="button" id="edit-crop-from-details" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            <i class="fas fa-edit mr-2"></i> Edit Crop
+                        </button>
+                        <button type="button" id="close-details-btn" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                            <i class="fas fa-times mr-2"></i> Close
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-    </div>
 
     <!-- JavaScript -->
     <script>
         // Database configuration
         const DB_NAME = 'AgriVisionProDB';
-        const DB_VERSION = 3; // Incremented for new fields
+        const DB_VERSION = 4; // Incremented for new fields
         const STORES = {
             CROPS: 'crops',
             ACTIVITY: 'activity'
@@ -1021,6 +1115,15 @@ function getInitials($name) {
                 document.getElementById('crop-form').reset();
                 document.getElementById('crop-modal').classList.remove('hidden');
             });
+
+            // Initialize modals
+            document.getElementById('close-details').addEventListener('click', () => {
+                document.getElementById('crop-details-modal').classList.add('hidden');
+            });
+
+            document.getElementById('close-details-btn').addEventListener('click', () => {
+                document.getElementById('crop-details-modal').classList.add('hidden');
+            });
             
             // Save crop button
             document.getElementById('save-crop').addEventListener('click', async () => {
@@ -1126,11 +1229,11 @@ function getInitials($name) {
                 }
             });
             
-            // Close details modal
+            // In your setupUI() function, make sure these event listeners exist:
             document.getElementById('close-details').addEventListener('click', () => {
                 document.getElementById('crop-details-modal').classList.add('hidden');
             });
-            
+
             document.getElementById('close-details-btn').addEventListener('click', () => {
                 document.getElementById('crop-details-modal').classList.add('hidden');
             });
@@ -1592,8 +1695,10 @@ function getInitials($name) {
             // View buttons
             document.querySelectorAll('.view-crop').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
+                    e.preventDefault(); // අනවශ්‍ය page refresh වලකන්න
+                    e.stopPropagation(); // අනෙකුත් events වලකන්න
                     const id = parseInt(e.currentTarget.getAttribute('data-id'));
-                    await showCropDetails(id);
+                    await showCropDetails(id); // details පෙන්වන function එක call කරන්න
                 });
             });
             
@@ -1677,69 +1782,115 @@ function getInitials($name) {
             document.getElementById('image-preview').classList.add('hidden');
         });
 
-        // Update the showCropDetails function with timeline support
+        // Replace your existing showCropDetails function with this one
         async function showCropDetails(id) {
-            const crop = await getCrop(id);
-            if (!crop) return;
-            
-            // Get activities for this crop
-            const activities = await getCropActivities(crop.name);
-            
-            // Set modal data
-            document.getElementById('crop-details-modal').setAttribute('data-crop-id', crop.id);
-            document.getElementById('crop-details-title').textContent = crop.name;
-            document.getElementById('crop-details-subtitle').textContent = `${crop.variety ? crop.variety + ' • ' : ''}${crop.field || 'No field specified'}`;
-            
-            // Set basic info
-            document.getElementById('crop-details-name').textContent = crop.name;
-            document.getElementById('crop-details-variety').textContent = crop.variety || '-';
-            document.getElementById('crop-details-field').textContent = crop.field || '-';
-            document.getElementById('crop-details-area').textContent = crop.area ? `${crop.area} ha` : '-';
-            
-            // Set status with colored badge
-            const statusElement = document.getElementById('crop-details-status');
-            statusElement.textContent = getStatusText(crop.status);
-            statusElement.className = 'mt-1 text-sm font-medium ' + getStatusClass(crop.status).replace('text-xs', 'text-sm') + ' px-2 py-1 rounded-full inline-block';
-            
-            document.getElementById('crop-details-yield').textContent = crop.yield ? `${crop.yield} kg/ha` : '-';
-            document.getElementById('crop-details-planted-date').textContent = crop.plantedDate ? formatDate(crop.plantedDate) : '-';
-            document.getElementById('crop-details-harvest-date').textContent = crop.harvestDate ? formatDate(crop.harvestDate) : '-';
-            document.getElementById('crop-details-notes').textContent = crop.notes || 'No notes available';
-            
-            // Set image (use placeholder if no image)
-            const imageUrl = crop.image || `https://source.unsplash.com/random/300x300/?${encodeURIComponent(crop.name)},agriculture`;
-            document.getElementById('crop-details-image').src = imageUrl;
-            
-            // Update timeline
-            updateCropTimeline(crop);
-            
-            // Set activities
-            const activitiesContainer = document.getElementById('crop-activities');
-            if (activities.length === 0) {
-                activitiesContainer.innerHTML = `
-                    <div class="text-center py-4 text-sm text-gray-500">
-                        No activities recorded for this crop
-                    </div>
-                `;
-            } else {
-                activitiesContainer.innerHTML = activities.map(activity => `
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0 pt-1">
-                            <div class="h-8 w-8 rounded-full flex items-center justify-center ${getActivityIconColor(activity.type)}">
-                                <i class="fas ${getActivityIcon(activity.type)} text-white text-sm"></i>
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900">${activity.user || 'System'}</p>
-                            <p class="text-sm text-gray-600">${activity.description}</p>
-                            <p class="text-xs text-gray-400 mt-1">${formatDateTime(activity.date)}</p>
+    try {
+        const crop = await getCrop(id);
+        
+        if (!crop) {
+            showErrorToast('Crop not found');
+            return;
+        }
+
+        // Set modal data
+        document.getElementById('crop-details-modal').setAttribute('data-crop-id', crop.id);
+        document.getElementById('crop-details-title').textContent = crop.name;
+        document.getElementById('crop-details-subtitle').textContent = `${crop.variety ? crop.variety + ' • ' : ''}${crop.field || 'No field specified'}`;
+
+        // Populate all the details
+        document.getElementById('crop-details-name').textContent = crop.name;
+        document.getElementById('crop-details-variety').textContent = crop.variety || '-';
+        document.getElementById('crop-details-field').textContent = crop.field || '-';
+        document.getElementById('crop-details-area').textContent = crop.area ? `${crop.area} ha` : '-';
+        document.getElementById('crop-details-yield').textContent = crop.yield ? `${crop.yield} kg/ha` : '-';
+        document.getElementById('crop-details-planted-date').textContent = crop.plantedDate ? formatDate(crop.plantedDate) : '-';
+        document.getElementById('crop-details-harvest-date').textContent = crop.harvestDate ? formatDate(crop.harvestDate) : '-';
+        document.getElementById('crop-details-notes').textContent = crop.notes || 'No notes available';
+
+        // Set status with colored badge
+        const statusElement = document.getElementById('crop-details-status');
+        statusElement.textContent = getStatusText(crop.status);
+        statusElement.className = 'mt-1 text-sm font-medium px-2 py-1 rounded-full inline-block ' + getStatusColorClass(crop.status);
+
+        // Set image
+        const imageUrl = crop.image || `https://source.unsplash.com/random/300x300/?${encodeURIComponent(crop.name)},agriculture`;
+        document.getElementById('crop-details-image').src = imageUrl;
+
+       
+        // Get and display activities
+        const activities = await getCropActivities(crop.name);
+        const activitiesContainer = document.getElementById('crop-activities');
+
+        if (activities.length === 0) {
+            activitiesContainer.innerHTML = '<div class="text-center py-4 text-sm text-gray-500">No activities recorded for this crop</div>';
+        } else {
+            activitiesContainer.innerHTML = activities.map(activity => `
+                <div class="activity-item flex items-start p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div class="flex-shrink-0 pt-1">
+                        <div class="h-8 w-8 rounded-full flex items-center justify-center ${getActivityIconColor(activity.type)}">
+                            <i class="fas ${getActivityIcon(activity.type)} text-white text-sm"></i>
                         </div>
                     </div>
-                `).join('');
+                    <div class="ml-3 flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900">${activity.user || 'System'}</p>
+                        <p class="text-sm text-gray-600">${activity.description}</p>
+                        <p class="text-xs text-gray-400 mt-1">${formatDateTime(activity.date)}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Show modal
+        document.getElementById('crop-details-modal').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error showing crop details:', error);
+        showErrorToast('Failed to load crop details');
+    }
+
+     //Modal එක වසන්න buttons සකස් කරන්න
+document.getElementById('close-details').addEventListener('click', () => {
+    document.getElementById('crop-details-modal').classList.add('hidden');
+});
+}
+        // Helper function to update timeline visualization
+        function updateCropTimeline(crop) {
+            const plantedDate = crop.plantedDate ? new Date(crop.plantedDate) : null;
+            const harvestDate = crop.harvestDate ? new Date(crop.harvestDate) : null;
+            const today = new Date();
+            
+            // Set timeline dates
+            document.getElementById('timeline-planted').textContent = plantedDate ? formatDate(plantedDate) : '-';
+            document.getElementById('timeline-harvest').textContent = harvestDate ? formatDate(harvestDate) : '-';
+            
+            // Calculate progress
+            let progress = 0;
+            let statusText = getStatusText(crop.status);
+            let daysText = 'N/A';
+            
+            if (plantedDate && harvestDate) {
+                const totalDays = Math.round((harvestDate - plantedDate) / (1000 * 60 * 60 * 24));
+                const daysPassed = Math.round((today - plantedDate) / (1000 * 60 * 60 * 24));
+                
+                if (today >= harvestDate) {
+                    progress = 100;
+                    daysText = `Harvested (${totalDays} days)`;
+                } else if (today <= plantedDate) {
+                    progress = 0;
+                    daysText = `Planted (0 of ${totalDays} days)`;
+                } else {
+                    progress = Math.min(100, Math.round((daysPassed / totalDays) * 100));
+                    daysText = `${daysPassed} of ${totalDays} days (${progress}%)`;
+                }
             }
             
-            // Show modal
-            document.getElementById('crop-details-modal').classList.remove('hidden');
+            // Update timeline elements
+            const progressElement = document.getElementById('timeline-progress');
+            progressElement.style.width = `${progress}%`;
+            progressElement.className = `shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${getStatusProgressClass(crop.status)}`;
+            
+            document.getElementById('timeline-days').textContent = daysText;
+            document.getElementById('timeline-status').textContent = statusText;
+            document.getElementById('timeline-status').className = `text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${getStatusColorClass(crop.status)}`;
         }
 
         function updateCropTimeline(crop) {

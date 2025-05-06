@@ -329,7 +329,7 @@ checkAuthentication();
     <script>
         // Database configuration
         const DB_NAME = 'AgriVisionProDB';
-        const DB_VERSION = 3; // Incremented version for inventory
+        const DB_VERSION = 4; // Incremented version for inventory
         const STORES = {
             INVENTORY: 'inventory',
             ACTIVITY: 'activity'
