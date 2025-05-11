@@ -49,6 +49,7 @@ function calculateStatus($quantity) {
 }
 
 
+
 // Get status class for styling
 function getStatusClass($status) {
     switch($status) {
@@ -199,39 +200,6 @@ function getStatusClass($status) {
             background: #a8a8a8;
         }
         
-        /* Notification styles */
-        .notification-badge {
-            position: absolute;
-            top: -0.5rem;
-            right: -0.5rem;
-            width: 1.25rem;
-            height: 1.25rem;
-            border-radius: 9999px;
-            background-color: #EF4444;
-            color: white;
-            font-size: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .notification-item {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid #f3f4f6;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .notification-item:hover {
-            background-color: #f9fafb;
-        }
-        .notification-item.unread {
-            background-color: #f0f9ff;
-        }
-        .notification-dropdown {
-            width: 350px;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-        
         @media (min-width: 640px) {
             .sm\:max-w-2xl {
                 max-width: 40rem;
@@ -338,30 +306,12 @@ function getStatusClass($status) {
                     </div>
                     
                     <div class="flex items-center space-x-4">
-                        <!-- Notifications Dropdown -->
-                        <div class="relative">
-                            <button id="notifications-btn" class="p-1 text-gray-400 hover:text-gray-500 focus:outline-none relative" title="Notifications">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                </svg>
-                                <span id="notification-count" class="notification-badge hidden">0</span>
-                            </button>
-                            <div id="notifications-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-white rounded-md shadow-lg overflow-hidden z-50 notification-dropdown">
-                                <div class="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                                    <h3 class="text-sm font-medium text-gray-900">Notifications</h3>
-                                </div>
-                                <div id="notifications-list" class="divide-y divide-gray-200">
-                                    <div class="text-center py-4 text-sm text-gray-500">
-                                        <i class="fas fa-spinner fa-spin mr-2"></i> Loading notifications...
-                                    </div>
-                                </div>
-                                <div class="px-4 py-2 border-t border-gray-200 bg-gray-50 text-center">
-                                    <a href="#" class="text-xs font-medium text-blue-600 hover:text-blue-800">View all notifications</a>
-                                </div>
-                            </div>
-                        </div>
+                        <button class="p-1 text-gray-400 hover:text-gray-500 focus:outline-none" title="Notifications">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                        </button>
                         
-                        <!-- User Profile Dropdown -->
                         <div class="relative">
                             <button id="user-menu" class="flex items-center space-x-2 focus:outline-none">
                                 <?php if (!empty($current_user['profile_picture'])): ?>
@@ -420,12 +370,6 @@ function getStatusClass($status) {
                     <button id="add-item-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <i class="fas fa-plus mr-2"></i> Add New Item
                     </button>
-                </div>
-                
-                <!-- Connection Status Indicator -->
-                <div id="connection-status" class="hidden mb-4 p-2 rounded-md text-sm flex items-center">
-                    <i class="fas fa-circle mr-2 text-gray-500"></i>
-                    <span>Checking connection...</span>
                 </div>
                 
                 <!-- Summary Cards -->
@@ -913,164 +857,24 @@ function getStatusClass($status) {
         let currentCategoryFilter = 'all';
         let currentStatusFilter = 'all';
         let currentSearchTerm = '';
-        let online = navigator.onLine;
-        let db;
-        let currentItems = [];
         
         // Initialize the application
-            document.addEventListener('DOMContentLoaded', async function() {
-                try {
-                    // Initialize IndexedDB
-                    await initIndexedDB();
-                    
-                    // Check connection status
-                    online = navigator.onLine;
-                    updateConnectionStatus();
-                    
-                    // Set up event listeners
-                    window.addEventListener('online', () => {
-                        online = true;
-                        updateConnectionStatus();
-                        syncPendingOperations();
-                    });
-                    
-                    window.addEventListener('offline', () => {
-                        online = false;
-                        updateConnectionStatus();
-                    });
-                    
-                    // Load initial data
-                    await loadInventory();
-                    await loadNotifications();
-                    initCategoryChart();
-                    await updateCategoryChart();
-                    
-                } catch (error) {
-                    console.error('Initialization error:', error);
-                    showErrorToast('Failed to initialize application');
-                }
-            });
-        
-        // Initialize IndexedDB
-            function initIndexedDB() {
-                return new Promise((resolve, reject) => {
-                    const request = indexedDB.open('AgriVisionProDB', 4);
-                    
-                    request.onerror = function(event) {
-                        console.error('Database error:', event.target.error);
-                        reject('Failed to open database');
-                    };
-                    
-                    request.onsuccess = function(event) {
-                        db = event.target.result;
-                        console.log('IndexedDB initialized successfully');
-                        resolve(db);
-                    };
-                    
-                    request.onupgradeneeded = function(event) {
-                        const db = event.target.result;
-                        
-                        // Create object stores and indexes
-                        const inventoryStore = db.createObjectStore('inventory', { keyPath: 'id' });
-                        inventoryStore.createIndex('name', 'name', { unique: false });
-                        inventoryStore.createIndex('category', 'category', { unique: false });
-                        inventoryStore.createIndex('status', 'status', { unique: false });
-                        
-                        const activitiesStore = db.createObjectStore('activities', { keyPath: 'id', autoIncrement: true });
-                        activitiesStore.createIndex('item_id', 'item_id', { unique: false });
-                        
-                        const notificationsStore = db.createObjectStore('notifications', { keyPath: 'id', autoIncrement: true });
-                        notificationsStore.createIndex('read', 'read', { unique: false });
-                        
-                        const pendingOpsStore = db.createObjectStore('pending_operations', { keyPath: 'id', autoIncrement: true });
-                        pendingOpsStore.createIndex('type', 'type', { unique: false });
-                    };
-                });
-            }
-
-        
-        // Check connection status
-        function checkConnection() {
-            updateConnectionStatus();
-            
-            // Listen for online/offline events
-            window.addEventListener('online', () => {
-                online = true;
-                updateConnectionStatus();
-                syncPendingOperations();
-            });
-            
-            window.addEventListener('offline', () => {
-                online = false;
-                updateConnectionStatus();
-            });
-            
-            // Check periodically
-            setInterval(updateConnectionStatus, 30000);
-        }
-        
-        // Update connection status UI
-        function updateConnectionStatus() {
-            const statusElement = document.getElementById('connection-status');
-            
-            if (navigator.onLine) {
-                statusElement.className = 'mb-4 p-2 rounded-md text-sm flex items-center bg-green-100 text-green-800';
-                statusElement.innerHTML = '<i class="fas fa-circle mr-2 text-green-500"></i><span>Online - Changes will sync automatically</span>';
-                statusElement.classList.remove('hidden');
-            } else {
-                statusElement.className = 'mb-4 p-2 rounded-md text-sm flex items-center bg-yellow-100 text-yellow-800';
-                statusElement.innerHTML = '<i class="fas fa-circle mr-2 text-yellow-500"></i><span>Offline - Working in offline mode. Changes will sync when back online</span>';
-                statusElement.classList.remove('hidden');
-            }
-        }
-        
-        // Sync pending operations when back online
-        function syncPendingOperations() {
-            if (!online) return;
-            
-            const transaction = db.transaction(['pending_operations'], 'readwrite');
-            const store = transaction.objectStore('pending_operations');
-            const request = store.getAll();
-            
-            request.onsuccess = async function(event) {
-                const operations = event.target.result;
-                if (operations.length === 0) return;
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Setup UI interactions
+                setupUI();
                 
-                try {
-                    // Process each operation
-                    for (const op of operations) {
-                        switch(op.type) {
-                            case 'add_item':
-                                await addItemToServer(op.data);
-                                break;
-                            case 'update_item':
-                                await updateItemOnServer(op.data.id, op.data);
-                                break;
-                            case 'delete_item':
-                                await deleteItemFromServer(op.data.id);
-                                break;
-                            case 'add_activity':
-                                await addActivityToServer(op.data);
-                                break;
-                        }
-                        
-                        // Remove the operation from pending
-                        const deleteRequest = store.delete(op.id);
-                        deleteRequest.onsuccess = function() {
-                            console.log('Pending operation synced and removed:', op.id);
-                        };
-                    }
-                    
-                    // Refresh data
-                    await loadInventory();
-                    await updateSummaryCards();
-                    await updateCategoryChart();
-                    showSuccessToast('Pending changes synced successfully');
-                } catch (error) {
-                    console.error('Error syncing pending operations:', error);
-                }
-            };
-        }
+                // Load initial data
+                await loadInventory();
+                await updateSummaryCards();
+                initCategoryChart();
+                await updateCategoryChart();
+                
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showErrorToast('Failed to initialize application');
+            }
+        });
         
         // Setup UI interactions
         function setupUI() {
@@ -1091,19 +895,9 @@ function getStatusClass($status) {
                 userMenuDropdown.classList.toggle('hidden');
             });
             
-            // Notifications dropdown
-            const notificationsBtn = document.getElementById('notifications-btn');
-            const notificationsDropdown = document.getElementById('notifications-dropdown');
-            
-            notificationsBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                notificationsDropdown.classList.toggle('hidden');
-            });
-            
-            // Close dropdowns when clicking outside
+            // Close dropdown when clicking outside
             document.addEventListener('click', function() {
                 userMenuDropdown.classList.add('hidden');
-                notificationsDropdown.classList.add('hidden');
             });
             
             // Add item button
@@ -1111,8 +905,6 @@ function getStatusClass($status) {
                 document.getElementById('modal-title').textContent = 'Add New Item';
                 document.getElementById('item-id').value = '';
                 document.getElementById('item-form').reset();
-                document.getElementById('image-preview').classList.add('hidden');
-                document.getElementById('image-upload-area').classList.remove('hidden');
                 document.getElementById('item-modal').classList.remove('hidden');
             });
 
@@ -1125,46 +917,8 @@ function getStatusClass($status) {
                 document.getElementById('item-details-modal').classList.add('hidden');
             });
             
-            // Image upload handling
-            const itemImageInput = document.getElementById('item-image');
-            const previewImage = document.getElementById('preview-image');
-            const imageUploadArea = document.getElementById('image-upload-area');
-            const imagePreview = document.getElementById('image-preview');
-            const removeImageBtn = document.getElementById('remove-image');
-            
-            itemImageInput.addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.type.match('image.*')) {
-                    showErrorToast('Please select an image file');
-                    return;
-                }
-                
-                if (file.size > 5 * 1024 * 1024) {
-                    showErrorToast('Image size should be less than 5MB');
-                    return;
-                }
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewImage.src = e.target.result;
-                    imageUploadArea.classList.add('hidden');
-                    imagePreview.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            });
-            
-            removeImageBtn.addEventListener('click', function() {
-                itemImageInput.value = '';
-                previewImage.src = '#';
-                imagePreview.classList.add('hidden');
-                imageUploadArea.classList.remove('hidden');
-            });
-            
             // Save item button
             document.getElementById('save-item').addEventListener('click', async () => {
-                const formData = new FormData();
                 const itemData = {
                     name: document.getElementById('item-name').value,
                     category: document.getElementById('item-category').value,
@@ -1172,118 +926,62 @@ function getStatusClass($status) {
                     unit: document.getElementById('item-unit').value,
                     location: document.getElementById('item-location').value,
                     notes: document.getElementById('item-notes').value,
-                    status: calculateStatus(parseInt(document.getElementById('item-quantity').value) || 0)
+                    image: null // This would be handled with file upload in a real app
                 };
                 
                 const id = document.getElementById('item-id').value;
-                const imageFile = document.getElementById('item-image').files[0];
-                
-                if (imageFile) {
-                    formData.append('image', imageFile);
-                }
-                
-                // Add other fields to FormData
-                for (const key in itemData) {
-                    formData.append(key, itemData[key]);
-                }
                 
                 try {
                     if (id) {
                         // Update existing item
-                        formData.append('id', id);
+                        const response = await fetch('includes/inventory_api.php', {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ id, ...itemData })
+                        });
                         
-                        if (online) {
-                            const response = await fetch('includes/inventory_api.php', {
-                                method: 'PUT',
-                                body: formData
-                            });
-                            
-                            const result = await response.json();
-                            
-                            if (!response.ok) {
-                                throw new Error(result.message || 'Failed to update item');
-                            }
-                            
-                            // Update local database
-                            await updateItemInIndexedDB(result);
-                            
-                            // Add activity log
-                            await addActivityLog({
-                                type: 'item_updated',
-                                description: `Updated item: ${itemData.name}`,
-                                item_id: id,
-                                user_id: <?= $_SESSION['user_id'] ?? 0 ?>,
-                                user_name: '<?= $_SESSION['full_name'] ?? 'You' ?>'
-                            });
-                            
-                            showSuccessToast('Item updated successfully');
-                        } else {
-                            // Add to pending operations
-                            await addPendingOperation('update_item', { id, ...itemData });
-                            
-                            // Update local database
-                            await updateItemInIndexedDB({ id, ...itemData });
-                            
-                            // Add activity log
-                            await addActivityLog({
-                                type: 'item_updated',
-                                description: `Updated item: ${itemData.name}`,
-                                item_id: id,
-                                user_id: <?= $_SESSION['user_id'] ?? 0 ?>,
-                                user_name: '<?= $_SESSION['full_name'] ?? 'You' ?>'
-                            });
-                            
-                            showSuccessToast('Item updated locally. Will sync when online');
+                        const result = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(result.message || 'Failed to update item');
                         }
+                        
+                        // Add activity log
+                        await addActivityLog({
+                            type: 'item_updated',
+                            description: `Updated item: ${itemData.name}`,
+                            item_id: id,
+                            user_id: <?= $_SESSION['user_id'] ?? 0 ?>
+                        });
+                        
+                        showSuccessToast('Item updated successfully');
                     } else {
                         // Add new item
-                        if (online) {
-                            const response = await fetch('includes/inventory_api.php', {
-                                method: 'POST',
-                                body: formData
-                            });
-                            
-                            const result = await response.json();
-                            
-                            if (!response.ok) {
-                                throw new Error(result.message || 'Failed to add item');
-                            }
-                            
-                            // Add to local database
-                            await addItemToIndexedDB(result);
-                            
-                            // Add activity log
-                            await addActivityLog({
-                                type: 'item_added',
-                                description: `Added new item: ${itemData.name}`,
-                                item_id: result.id,
-                                user_id: <?= $_SESSION['user_id'] ?? 0 ?>,
-                                user_name: '<?= $_SESSION['full_name'] ?? 'You' ?>'
-                            });
-                            
-                            showSuccessToast('Item added successfully');
-                        } else {
-                            // Generate temporary ID for offline use
-                            const tempId = Date.now();
-                            const newItem = { id: tempId, ...itemData };
-                            
-                            // Add to pending operations
-                            await addPendingOperation('add_item', newItem);
-                            
-                            // Add to local database
-                            await addItemToIndexedDB(newItem);
-                            
-                            // Add activity log
-                            await addActivityLog({
-                                type: 'item_added',
-                                description: `Added new item: ${itemData.name}`,
-                                item_id: tempId,
-                                user_id: <?= $_SESSION['user_id'] ?? 0 ?>,
-                                user_name: '<?= $_SESSION['full_name'] ?? 'You' ?>'
-                            });
-                            
-                            showSuccessToast('Item added locally. Will sync when online');
+                        const response = await fetch('includes/inventory_api.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(itemData)
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (!response.ok) {
+                            throw new Error(result.message || 'Failed to add item');
                         }
+                        
+                        // Add activity log
+                        await addActivityLog({
+                            type: 'item_added',
+                            description: `Added new item: ${itemData.name}`,
+                            item_id: result.id,
+                            user_id: <?= $_SESSION['user_id'] ?? 0 ?>
+                        });
+                        
+                        showSuccessToast('Item added successfully');
                     }
                     
                     document.getElementById('item-modal').classList.add('hidden');
@@ -1426,46 +1124,14 @@ function getStatusClass($status) {
         // Search items
         async function searchItems(query) {
             try {
-                if (online) {
-                    // Corrected fetch with proper parentheses
-                    fetch(`includes/inventory_api.php?search=${encodeURIComponent(query)}`);
-                    const results = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(results.message || 'Search failed');
-                    }
-                    
-                    // Cache results in IndexedDB
-                    const transaction = db.transaction(['inventory'], 'readwrite');
-                    const store = transaction.objectStore('inventory');
-                    
-                    results.forEach(item => {
-                        store.put(item);
-                    });
-                    
-                    return results;
-                } else {
-                    // Search in IndexedDB
-                    return new Promise((resolve, reject) => {
-                        const transaction = db.transaction(['inventory'], 'readonly');
-                        const store = transaction.objectStore('inventory');
-                        const request = store.getAll();
-                        
-                        request.onsuccess = function(event) {
-                            const allItems = event.target.result;
-                            const filteredItems = allItems.filter(item => 
-                                item.name.toLowerCase().includes(query.toLowerCase()) ||
-                                (item.category && item.category.toLowerCase().includes(query.toLowerCase())) ||
-                                (item.location && item.location.toLowerCase().includes(query.toLowerCase()))
-                            );
-                            resolve(filteredItems);
-                        };
-                        
-                        request.onerror = function(event) {
-                            reject('Failed to search items in local database');
-                        };
-                    });
+                const response = await fetch(`includes/inventory_api.php?search=${encodeURIComponent(query)}`);
+                const results = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(results.message || 'Search failed');
                 }
+                
+                return results;
             } catch (error) {
                 console.error('Error searching items:', error);
                 throw error;
@@ -1515,156 +1181,50 @@ function getStatusClass($status) {
             });
         }
         
-        async function getData() {
-            try {
-                if (online) {
-                    const freshData = await fetchFromServer();
-                    await cacheInIndexedDB(freshData);
-                    return freshData;
-                }
-                return getFromIndexedDB();
-            } catch (error) {
-                return getFromIndexedDB();
-            }
-        }
+        
 
         async function loadInventory() {
-                try {
-                    let items = [];
-                    
-                    if (online) {
-                        const response = await fetch(`includes/inventory_api.php?page=${currentPage}&per_page=${itemsPerPage}&search=${encodeURIComponent(currentSearchTerm)}&category=${currentCategoryFilter}&status=${currentStatusFilter}&sort=${currentSort}`);
-                        
-                        // Check for HTML error responses
-                        const contentType = response.headers.get('content-type');
-                        if (!contentType || !contentType.includes('application/json')) {
-                            const text = await response.text();
-                            throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
-                        }
-                        
-                        const data = await response.json();
-                        
-                        if (!data || !Array.isArray(data.items)) {
-                            throw new Error('Invalid data format received from server');
-                        }
-                        items = data.items;
-                        await cacheItemsInIndexedDB(items);
-                        updatePagination(data.total || 0);
-                    } else {
-                        items = await loadInventoryFromIndexedDB();
-                    }
-                    
-                    if (currentView === 'table') {
-                        renderTableView(items);
-                    } else {
-                        renderCardView(items);
-                    }
-                    
-                } catch (error) {
-                    console.error('Error loading inventory:', error);
-                    
-                    if (online) {
-                        showErrorToast('Failed to load from server. Using local data.');
-                        online = false;
-                        updateConnectionStatus();
-                        await loadInventory(); // Retry with offline mode
-                    } else {
-                        showErrorToast('Failed to load inventory');
-                        renderTableView([]);
-                    }
+            try {
+                const response = await fetch(`includes/inventory_api.php?page=${currentPage}&per_page=${itemsPerPage}&search=${encodeURIComponent(currentSearchTerm)}&category=${currentCategoryFilter}&status=${currentStatusFilter}&sort=${currentSort}`);
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
-            }
 
-            async function loadInventoryFromIndexedDB() {
-                return new Promise((resolve, reject) => {
-                    const transaction = db.transaction(['inventory'], 'readonly');
-                    const store = transaction.objectStore('inventory');
-                    const request = store.getAll();
-                    
-                    request.onsuccess = function(event) {
-                        let allItems = event.target.result;
-                        
-                        // Apply filters
-                        if (currentCategoryFilter !== 'all') {
-                            allItems = allItems.filter(item => item.category === currentCategoryFilter);
-                        }
-                        
-                        if (currentStatusFilter !== 'all') {
-                            allItems = allItems.filter(item => item.status === currentStatusFilter);
-                        }
-                        
-                        // Apply search
-                        if (currentSearchTerm) {
-                            allItems = allItems.filter(item => 
-                                item.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
-                                (item.category && item.category.toLowerCase().includes(currentSearchTerm.toLowerCase())) ||
-                                (item.location && item.location.toLowerCase().includes(currentSearchTerm.toLowerCase()))
-                            );
-                        }
-                        
-                        // Apply sorting
-                        allItems = sortItems(allItems, currentSort);
-                        
-                        // Pagination
-                        const totalItems = allItems.length;
-                        const startIndex = (currentPage - 1) * itemsPerPage;
-                        const paginatedItems = allItems.slice(startIndex, startIndex + itemsPerPage);
-                        
-                        currentItems = allItems;
-                        updatePagination(totalItems);
-                        resolve(paginatedItems);
-                    };
-                    
-                    request.onerror = function(event) {
-                        reject('Failed to load items from local database');
-                    };
-                });
-            }
-        
-        
-        // Sort items array
-        function sortItems(items, sortBy) {
-            switch(sortBy) {
-            case 'name-asc':
-                return items.sort((a, b) => a.name.localeCompare(b.name));
-            case 'name-desc':
-                return items.sort((a, b) => b.name.localeCompare(a.name));
-            case 'quantity-asc':
-                return items.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
-            case 'quantity-desc':
-                return items.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
-            default:
-                return items;
+                const data = await response.json();
+                
+                // Ensure data.items exists and is an array
+                if (!data || !data.items || !Array.isArray(data.items)) {
+                    throw new Error('Invalid data format received from server');
+                }
+                
+                updatePagination(data.total || 0);
+                
+                if (currentView === 'table') {
+                    renderTableView(data.items);
+                } else {
+                    renderCardView(data.items);
+                }
+                
+            } catch (error) {
+                console.error('Error loading inventory:', error);
+                showErrorToast('Failed to load inventory');
+                // Render empty state
+                renderTableView([]);
             }
         }
         
         // Get total items count for pagination
         async function getTotalItemsCount() {
             try {
-                if (online) {
-                    const response = await fetch('includes/inventory_api.php?count=true');
-                    const data = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(data.message || 'Failed to get item count');
-                    }
-                    
-                    return data.total;
-                } else {
-                    return new Promise((resolve, reject) => {
-                        const transaction = db.transaction(['inventory'], 'readonly');
-                        const store = transaction.objectStore('inventory');
-                        const request = store.count();
-                        
-                        request.onsuccess = function(event) {
-                            resolve(event.target.result);
-                        };
-                        
-                        request.onerror = function(event) {
-                            reject('Failed to count items in local database');
-                        };
-                    });
+                const response = await fetch('includes/inventory_api.php?count=true');
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to get item count');
                 }
+                
+                return data.total;
             } catch (error) {
                 console.error('Error getting item count:', error);
                 return 0;
@@ -1779,138 +1339,114 @@ function getStatusClass($status) {
         }
         
         // Render table view
-        function renderTableView(items) {
-            const tableBody = document.getElementById('inventory-table-body');
-            
-            if (items.length === 0) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
-                            No items found. <button id="add-item-empty" class="text-blue-600 hover:text-blue-800">Add a new item</button> to get started.
-                        </td>
-                    </tr>
-                `;
-                
-                document.getElementById('add-item-empty').addEventListener('click', () => {
-                    document.getElementById('add-item-btn').click();
-                });
-                
-                return;
-            }
-            
-            tableBody.innerHTML = items.map(item => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${item.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap capitalize">${item.category}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${item.quantity || '0'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${item.unit || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${item.location || '-'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.status)}">
-                            ${getStatusText(item.status)}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button data-id="${item.id}" class="view-item text-blue-600 hover:text-blue-900 mr-3" title="View Details">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button data-id="${item.id}" class="edit-item text-blue-600 hover:text-blue-900 mr-3" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button data-id="${item.id}" class="delete-item text-red-600 hover:text-red-900" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-            
-            // Add event listeners to action buttons
-            addItemActionListeners();
-        }
+function renderTableView(items) {
+    const tableBody = document.getElementById('inventory-table-body');
+    
+    if (items.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">
+                    No items found. <button id="add-item-empty" class="text-blue-600 hover:text-blue-800">Add a new item</button> to get started.
+                </td>
+            </tr>
+        `;
         
-        // Add event listeners to action buttons
-        function addItemActionListeners() {
-            // View buttons
-            document.querySelectorAll('.view-item').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const id = parseInt(e.currentTarget.getAttribute('data-id'));
-                    await showItemDetails(id);
-                });
-            });
+        document.getElementById('add-item-empty').addEventListener('click', () => {
+            document.getElementById('add-item-btn').click();
+        });
+        
+        return;
+    }
+    
+    tableBody.innerHTML = items.map(item => `
+        <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${item.name}</td>
+            <td class="px-6 py-4 whitespace-nowrap capitalize">${item.category}</td>
+            <td class="px-6 py-4 whitespace-nowrap">${item.quantity || '0'}</td>
+            <td class="px-6 py-4 whitespace-nowrap">${item.unit || '-'}</td>
+            <td class="px-6 py-4 whitespace-nowrap">${item.location || '-'}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(item.status)}">
+                    ${getStatusText(item.status)}
+                </span>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <button data-id="${item.id}" class="view-item text-blue-600 hover:text-blue-900 mr-3" title="View Details">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button data-id="${item.id}" class="edit-item text-blue-600 hover:text-blue-900 mr-3" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button data-id="${item.id}" class="delete-item text-red-600 hover:text-red-900" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    // Add event listeners to action buttons
+    addItemActionListeners();
+}
+
+// Add event listeners to action buttons
+function addItemActionListeners() {
+    // View buttons
+    document.querySelectorAll('.view-item').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const id = parseInt(e.currentTarget.getAttribute('data-id'));
+            await showItemDetails(id);
+        });
+    });
+    
+    // Edit buttons
+    document.querySelectorAll('.edit-item').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = parseInt(e.currentTarget.getAttribute('data-id'));
+            openEditModal(id);
+        });
+    });
+    
+    // Delete buttons
+    document.querySelectorAll('.delete-item').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = parseInt(e.currentTarget.getAttribute('data-id'));
+            const item = await getItem(id);
             
-            // Edit buttons
-            document.querySelectorAll('.edit-item').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = parseInt(e.currentTarget.getAttribute('data-id'));
-                    openEditModal(id);
-                });
-            });
-            
-            // Delete buttons
-            document.querySelectorAll('.delete-item').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = parseInt(e.currentTarget.getAttribute('data-id'));
-                    const item = await getItem(id);
+            if (item && confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)) {
+                try {
+                    const response = await fetch(`includes/inventory_api.php?id=${id}`, {
+                        method: 'DELETE'
+                    });
                     
-                    if (item && confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`)) {
-                        try {
-                            if (online) {
-                                const response = await fetch(`includes/inventory_api.php?id=${id}`, {
-                                    method: 'DELETE'
-                                });
-                                
-                                const result = await response.json();
-                                
-                                if (!response.ok) {
-                                    throw new Error(result.message || 'Failed to delete item');
-                                }
-                                
-                                // Remove from local database
-                                await deleteItemFromIndexedDB(id);
-                                
-                                // Add activity log
-                                await addActivityLog({
-                                    type: 'item_deleted',
-                                    description: `Deleted item: ${item.name}`,
-                                    item_id: id,
-                                    user_id: <?= $_SESSION['user_id'] ?? 0 ?>,
-                                    user_name: '<?= $_SESSION['full_name'] ?? 'You' ?>'
-                                });
-                                
-                                showSuccessToast('Item deleted successfully');
-                            } else {
-                                // Add to pending operations
-                                await addPendingOperation('delete_item', { id });
-                                
-                                // Remove from local database
-                                await deleteItemFromIndexedDB(id);
-                                
-                                // Add activity log
-                                await addActivityLog({
-                                    type: 'item_deleted',
-                                    description: `Deleted item: ${item.name}`,
-                                    item_id: id,
-                                    user_id: <?= $_SESSION['user_id'] ?? 0 ?>,
-                                    user_name: '<?= $_SESSION['full_name'] ?? 'You' ?>'
-                                });
-                                
-                                showSuccessToast('Item deleted locally. Will sync when online');
-                            }
-                            
-                            await loadInventory();
-                            await updateSummaryCards();
-                            await updateCategoryChart();
-                        } catch (error) {
-                            console.error('Error deleting item:', error);
-                            showErrorToast('Failed to delete item');
-                        }
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Failed to delete item');
                     }
-                });
-            });
-        }
-                
+                    
+                    // Add activity log
+                    await addActivityLog({
+                        type: 'item_deleted',
+                        description: `Deleted item: ${item.name}`,
+                        item_id: id,
+                        user_id: <?= $_SESSION['user_id'] ?? 0 ?>
+                    });
+                    
+                    showSuccessToast('Item deleted successfully');
+                    await loadInventory();
+                    await updateSummaryCards();
+                    await updateCategoryChart();
+                } catch (error) {
+                    console.error('Error deleting item:', error);
+                    showErrorToast('Failed to delete item');
+                }
+            }
+        });
+    });
+}
+        
         // Render card view
         function renderCardView(items = null) {
             const cardView = document.getElementById('card-view');
@@ -1940,7 +1476,7 @@ function getStatusClass($status) {
             cardView.innerHTML = items.map(item => `
                 <div class="inventory-card bg-white overflow-hidden shadow rounded-lg">
                     <div class="h-40 bg-gray-100 relative">
-                        <img src="${item.image || `https://source.unsplash.com/random/300x200/?${encodeURIComponent(item.category)},farm`}" alt="${item.category}" class="w-full h-full object-cover">
+                        <img src="https://source.unsplash.com/random/300x200/?${encodeURIComponent(item.category)},farm" alt="${item.category}" class="w-full h-full object-cover">
                         <div class="absolute top-2 right-2">
                             <span class="px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full ${getStatusClass(item.status)}">
                                 ${getStatusText(item.status)}
@@ -2005,16 +1541,6 @@ function getStatusClass($status) {
                     document.getElementById('item-location').value = item.location || '';
                     document.getElementById('item-notes').value = item.notes || '';
                     
-                    // Handle image preview
-                    if (item.image) {
-                        document.getElementById('preview-image').src = item.image;
-                        document.getElementById('image-preview').classList.remove('hidden');
-                        document.getElementById('image-upload-area').classList.add('hidden');
-                    } else {
-                        document.getElementById('image-preview').classList.add('hidden');
-                        document.getElementById('image-upload-area').classList.remove('hidden');
-                    }
-                    
                     document.getElementById('item-modal').classList.remove('hidden');
                 }
             } catch (error) {
@@ -2023,125 +1549,19 @@ function getStatusClass($status) {
             }
         }
         
-        // Replace all Unsplash image URLs with:
-        function getItemImage(item) {
-        if (item.image) return item.image;
-        return `./images/default-${item.category || 'inventory'}.jpg`; // Use local fallback images
-        }
-
         // Get item details
         async function getItem(id) {
             try {
-                if (online) {
-                    const response = await fetch(`includes/inventory_api.php?id=${id}`);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch item');
-                    }
-                    const item = await response.json();
-                    
-                    // Update local database
-                    await addItemToIndexedDB(item);
-                    
-                    return item;
-                } else {
-                    return new Promise((resolve, reject) => {
-                        const transaction = db.transaction(['inventory'], 'readonly');
-                        const store = transaction.objectStore('inventory');
-                        const request = store.get(id);
-                        
-                        request.onsuccess = function(event) {
-                            resolve(event.target.result);
-                        };
-                        
-                        request.onerror = function(event) {
-                            reject('Failed to get item from local database');
-                        };
-                    });
+                const response = await fetch(`includes/inventory_api.php?id=${id}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch item');
                 }
+                return await response.json();
             } catch (error) {
                 console.error('Error getting item:', error);
-                
-                // Fallback to IndexedDB if online fetch fails
-                if (online) {
-                    return await getItemFromIndexedDB(id);
-                }
-                
                 showErrorToast('Failed to load item details');
                 return null;
             }
-        }
-        
-        // Get item from IndexedDB
-        function getItemFromIndexedDB(id) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['inventory'], 'readonly');
-                const store = transaction.objectStore('inventory');
-                const request = store.get(id);
-                
-                request.onsuccess = function(event) {
-                    resolve(event.target.result);
-                };
-                
-                request.onerror = function(event) {
-                    reject('Failed to get item from local database');
-                };
-            });
-        }
-        
-        // Add item to IndexedDB
-        function addItemToIndexedDB(item) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['inventory'], 'readwrite');
-                const store = transaction.objectStore('inventory');
-                const request = store.put(item);
-                
-                request.onsuccess = function() {
-                    resolve();
-                };
-                
-                request.onerror = function(event) {
-                    reject('Failed to add item to local database');
-                };
-            });
-        }
-        
-        // Update item in IndexedDB
-        function updateItemInIndexedDB(item) {
-            return addItemToIndexedDB(item); // Same as add since it will overwrite
-        }
-        
-        // Delete item from IndexedDB
-        function deleteItemFromIndexedDB(id) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['inventory'], 'readwrite');
-                const store = transaction.objectStore('inventory');
-                const request = store.delete(id);
-                
-                request.onsuccess = function() {
-                    resolve();
-                };
-                
-                request.onerror = function(event) {
-                    reject('Failed to delete item from local database');
-                };
-            });
-        }
-        
-        // Add pending operation to IndexedDB
-        function addPendingOperation(type, data) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['pending_operations'], 'readwrite');
-                const store = transaction.objectStore('pending_operations');
-                const request = store.add({ type, data, created_at: new Date().toISOString() });
-                
-                request.onsuccess = function() {
-                    resolve();
-                };
-                
-                request.onerror = function(event) {
-                    reject('Failed to add pending operation');
-                };
-            });
         }
                 
         // Show item details
@@ -2212,649 +1632,23 @@ function getStatusClass($status) {
         // Get activities for a specific item
         async function getItemActivities(itemId) {
             try {
-                if (online) {
-                    const response = await fetch(`includes/activity_api.php?item_id=${itemId}`);
-                    const activities = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(activities.message || 'Failed to get activities');
-                    }
-                    
-                    // Cache activities in IndexedDB
-                    await Promise.all(activities.map(activity => 
-                        addActivityToIndexedDB(activity)
-                    ));
-                    
-                    return activities;
-                } else {
-                    return new Promise((resolve, reject) => {
-                        const transaction = db.transaction(['activities'], 'readonly');
-                        const store = transaction.objectStore('activities');
-                        const index = store.index('item_id');
-                        const request = index.getAll(itemId);
-                        
-                        request.onsuccess = function(event) {
-                            const activities = event.target.result;
-                            // Sort by date descending
-                            activities.sort((a, b) => 
-                                new Date(b.created_at) - new Date(a.created_at)
-                            );
-                            resolve(activities);
-                        };
-                        
-                        request.onerror = function(event) {
-                            reject('Failed to get activities from local database');
-                        };
-                    });
+                const response = await fetch(`includes/activity_api.php?item_id=${itemId}`);
+                const activities = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(activities.message || 'Failed to get activities');
                 }
+                
+                return activities;
             } catch (error) {
                 console.error('Error getting item activities:', error);
                 return [];
             }
         }
-        
-        // Add activity to IndexedDB
-        function addActivityToIndexedDB(activity) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['activities'], 'readwrite');
-                const store = transaction.objectStore('activities');
-                const request = store.put(activity);
-                
-                request.onsuccess = function() {
-                    resolve();
-                };
-                
-                request.onerror = function(event) {
-                    reject('Failed to add activity to local database');
-                };
-            });
-        }
 
         // Add activity log
         async function addActivityLog(activityData) {
             try {
-                if (online) {
-                    const response = await fetch('includes/activity_api.php', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(activityData)
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (!response.ok) {
-                        throw new Error(result.message || 'Failed to add activity');
-                    }
-                    
-                    // Add to local database
-                    await addActivityToIndexedDB(result);
-                    
-                    // Add notification if needed
-                    if (activityData.type === 'item_low_stock' || activityData.type === 'item_out_of_stock') {
-                        await addNotification({
-                            type: activityData.type,
-                            message: activityData.description,
-                            item_id: activityData.item_id,
-                            read: false
-                        });
-                    }
-                    
-                    return result;
-                } else {
-                    // Generate temporary ID for offline use
-                    const tempId = Date.now();
-                    const activity = { ...activityData, id: tempId, created_at: new Date().toISOString() };
-                    
-                    // Add to pending operations
-                    await addPendingOperation('add_activity', activity);
-                    
-                    // Add to local database
-                    await addActivityToIndexedDB(activity);
-                    
-                    // Add notification if needed
-                    if (activityData.type === 'item_low_stock' || activityData.type === 'item_out_of_stock') {
-                        await addNotification({
-                            type: activityData.type,
-                            message: activityData.description,
-                            item_id: activityData.item_id,
-                            read: false
-                        });
-                    }
-                    
-                    return activity;
-                }
-            } catch (error) {
-                console.error('Error adding activity:', error);
-                throw error;
-            }
-        }
-        
-        // Add notification
-        function addNotification(notification) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['notifications'], 'readwrite');
-                const store = transaction.objectStore('notifications');
-                const request = store.add({
-                    ...notification,
-                    created_at: new Date().toISOString()
-                });
-                
-                request.onsuccess = function() {
-                    resolve();
-                    // Update notification count
-                    updateNotificationCount();
-                };
-                
-                request.onerror = function(event) {
-                    reject('Failed to add notification');
-                };
-            });
-        }
-        // Cache items in IndexedDB
-        async function cacheItemsInIndexedDB(items) {
-            return new Promise((resolve, reject) => {
-                const transaction = db.transaction(['inventory'], 'readwrite');
-                const store = transaction.objectStore('inventory');
-                
-                items.forEach(item => {
-                    store.put(item);
-                });
-                
-                transaction.oncomplete = function() {
-                    resolve();
-                };
-                
-                transaction.onerror = function(event) {
-                    reject('Failed to cache items');
-                };
-            });
-        }
-       // Notification handling
-            async function loadNotifications() {
-                try {
-                    const notifications = await new Promise((resolve, reject) => {
-                        const transaction = db.transaction(['notifications'], 'readonly');
-                        const store = transaction.objectStore('notifications');
-                        const request = store.getAll();
-                        
-                        request.onsuccess = function(event) {
-                            const notifications = event.target.result;
-                            // Sort by date descending
-                            notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                            resolve(notifications);
-                        };
-                        
-                        request.onerror = function(event) {
-                            reject('Failed to load notifications');
-                        };
-                    });
-                    
-                    const unread = notifications.filter(n => !n.read);
-                    updateNotificationUI(unread);
-                    updateNotificationCount();
-                    
-                } catch (error) {
-                    console.error('Error loading notifications:', error);
-                    showErrorToast('Failed to load notifications');
-                }
-            }
-        
-            // Sync pending operations
-            async function syncPendingOperations() {
-                if (!online) return;
-                
-                try {
-                    const operations = await new Promise((resolve, reject) => {
-                        const transaction = db.transaction(['pending_operations'], 'readonly');
-                        const store = transaction.objectStore('pending_operations');
-                        const request = store.getAll();
-                        
-                        request.onsuccess = function(event) {
-                            resolve(event.target.result);
-                        };
-                        
-                        request.onerror = function(event) {
-                            reject('Failed to get pending operations');
-                        };
-                    });
-                    
-                    if (operations.length === 0) return;
-                    
-                    for (const op of operations) {
-                        try {
-                            switch(op.type) {
-                                case 'add_item':
-                                    await addItemToServer(op.data);
-                                    break;
-                                case 'update_item':
-                                    await updateItemOnServer(op.data.id, op.data);
-                                    break;
-                                case 'delete_item':
-                                    await deleteItemFromServer(op.data.id);
-                                    break;
-                                case 'add_activity':
-                                    await addActivityToServer(op.data);
-                                    break;
-                            }
-                            
-                            await deletePendingOperation(op.id);
-                            
-                        } catch (error) {
-                            console.error(`Error syncing operation ${op.id}:`, error);
-                            // Skip this operation and try others
-                            continue;
-                        }
-                    }
-                    
-                    showSuccessToast('Pending changes synced successfully');
-                    await loadInventory();
-                    
-                } catch (error) {
-                    console.error('Error syncing pending operations:', error);
-                }
-            }
-
-
-        // Update notification UI
-        function updateNotificationUI(notifications) {
-            const notificationsList = document.getElementById('notifications-list');
-            
-            if (notifications.length === 0) {
-                notificationsList.innerHTML = `
-                    <div class="text-center py-4 text-sm text-gray-500">
-                        No new notifications
-                    </div>
-                `;
-                return;
-            }
-            
-            notificationsList.innerHTML = notifications.slice(0, 5).map(notification => `
-                <div class="notification-item ${notification.read ? '' : 'unread'}" data-id="${notification.id}">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0 pt-1">
-                            <div class="h-6 w-6 rounded-full flex items-center justify-center ${getNotificationIconColor(notification.type)}">
-                                <i class="fas ${getNotificationIcon(notification.type)} text-white text-xs"></i>
-                            </div>
-                        </div>
-                        <div class="ml-3 flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900">${notification.message}</p>
-                            <p class="text-xs text-gray-500 mt-1">${formatDateTime(notification.created_at)}</p>
-                        </div>
-                    </div>
-                </div>
-            `).join('')};
-            
-            // Add click handlers to notifications
-            document.querySelectorAll('.notification-item').forEach(item => {
-                item.addEventListener('click', async (e) => {
-                    const id = parseInt(item.getAttribute('data-id'));
-                    
-                    // Mark as read
-                    await markNotificationAsRead(id);
-                    
-                    // If it's an item notification, show the item
-                    if (item.classList.contains('unread')) {
-                        const notification = await getNotification(id);
-                        if (notification && notification.item_id) {
-                            await showItemDetails(notification.item_id);
-                        }
-            }});
-                    
-                });   
-
-                // Get notification
-            function getNotification(id) {
-                return new Promise((resolve, reject) => {
-                    const transaction = db.transaction(['notifications'], 'readonly');
-                    const store = transaction.objectStore('notifications');
-                    const request = store.get(id);
-                    
-                    request.onsuccess = function(event) {
-                        resolve(event.target.result);
-                    };
-                    
-                    request.onerror = function(event) {
-                        reject('Failed to get notification');
-                    };
-                });
-            }
-            
-            // Mark notification as read
-            function markNotificationAsRead(id) {
-                return new Promise((resolve, reject) => {
-                    const transaction = db.transaction(['notifications'], 'readwrite');
-                    const store = transaction.objectStore('notifications');
-                    const getRequest = store.get(id);
-                    
-                    getRequest.onsuccess = function(event) {
-                        const notification = event.target.result;
-                        if (!notification) {
-                            reject('Notification not found');
-                            return;
-                        }
-                        
-                        const updateRequest = store.put({
-                            ...notification,
-                            read: true
-                        });
-                        
-                        updateRequest.onsuccess = function() {
-                            resolve();
-                            // Update notification count and UI
-                            loadNotifications();
-                        };
-                        
-                        updateRequest.onerror = function(event) {
-                            reject('Failed to update notification');
-                        };
-                    };
-                    
-                    getRequest.onerror = function(event) {
-                        reject('Failed to get notification');
-                    };
-                });
-            }
-            
-            // Update notification count
-            function updateNotificationCount() {
-                const countElement = document.getElementById('notification-count');
-                
-                const transaction = db.transaction(['notifications'], 'readonly');
-                const store = transaction.objectStore('notifications');
-                const index = store.index('read');
-                const request = index.count(false); // Count unread notifications
-                
-                request.onsuccess = function(event) {
-                    const count = event.target.result;
-                    if (count > 0) {
-                        countElement.textContent = count > 9 ? '9+' : count;
-                        countElement.classList.remove('hidden');
-                    } else {
-                        countElement.classList.add('hidden');
-                    }
-                };
-                
-                request.onerror = function(event) {
-                    console.error('Error counting notifications:', event.target.error);
-                };
-            }
-            
-            // Get notification icon
-            function getNotificationIcon(type) {
-                switch(type) {
-                    case 'item_low_stock': return 'fa-exclamation-triangle';
-                    case 'item_out_of_stock': return 'fa-times-circle';
-                    default: return 'fa-info-circle';
-                }
-            }
-            
-            // Get notification icon color
-            function getNotificationIconColor(type) {
-                switch(type) {
-                    case 'item_low_stock': return 'bg-yellow-500';
-                    case 'item_out_of_stock': return 'bg-red-500';
-                    default: return 'bg-blue-500';
-                }
-            }
-
-            // Initialize category chart
-            function initCategoryChart() {
-                const ctx = document.getElementById('categoryChart').getContext('2d');
-                
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: [],
-                        datasets: [{
-                            data: [],
-                            backgroundColor: [
-                                'rgba(54, 162, 235, 0.7)',
-                                'rgba(255, 99, 132, 0.7)',
-                                'rgba(75, 192, 192, 0.7)',
-                                'rgba(153, 102, 255, 0.7)',
-                                'rgba(255, 159, 64, 0.7)',
-                                'rgba(255, 205, 86, 0.7)'
-                            ],
-                            borderColor: [
-                                'rgba(54, 162, 235, 1)',
-                                'rgba(255, 99, 132, 1)',
-                                'rgba(75, 192, 192, 1)',
-                                'rgba(153, 102, 255, 1)',
-                                'rgba(255, 159, 64, 1)',
-                                'rgba(255, 205, 86, 1)'
-                            ],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'right',
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${context.raw} items`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-
-            async function updateNotificationCount() {
-                try {
-                    const transaction = db.transaction(['notifications'], 'readonly');
-                    const store = transaction.objectStore('notifications');
-                    
-                    // First check if the index exists
-                    if (store.indexNames.contains('read')) {
-                        // Count all unread notifications
-                        const request = store.index('read').count(false);
-                        
-                        request.onsuccess = function(event) {
-                            const count = event.target.result;
-                            const countElement = document.getElementById('notification-count');
-                            
-                            if (count > 0) {
-                                countElement.textContent = count > 9 ? '9+' : count;
-                                countElement.classList.remove('hidden');
-                            } else {
-                                countElement.classList.add('hidden');
-                            }
-                        };
-                        
-                        request.onerror = function(event) {
-                            console.error('Error counting notifications:', event.target.error);
-                            document.getElementById('notification-count').classList.add('hidden');
-                        };
-                    } else {
-                        // If index doesn't exist, fallback to counting all notifications
-                        const request = store.count();
-                        
-                        request.onsuccess = function(event) {
-                            const countElement = document.getElementById('notification-count');
-                            countElement.classList.add('hidden');
-                        };
-                    }
-                } catch (error) {
-                    console.error('Error in updateNotificationCount:', error);
-                    document.getElementById('notification-count').classList.add('hidden');
-                }
-            }
-            
-            // Update category chart with data
-            async function updateCategoryChart() {
-                try {
-                    let categoryStats;
-                    
-                    if (online) {
-                        const response = await fetch('includes/inventory_api.php?stats=category');
-                        categoryStats = await response.json();
-                        
-                        if (!response.ok) {
-                            throw new Error(categoryStats.message || 'Failed to get category stats');
-                        }
-                    } else {
-                        // Get stats from IndexedDB
-                        categoryStats = await new Promise((resolve, reject) => {
-                            const transaction = db.transaction(['inventory'], 'readonly');
-                            const store = transaction.objectStore('inventory');
-                            const request = store.getAll();
-                            
-                            request.onsuccess = function(event) {
-                                const items = event.target.result;
-                                const stats = {};
-                                
-                                items.forEach(item => {
-                                    if (!stats[item.category]) {
-                                        stats[item.category] = 0;
-                                    }
-                                    stats[item.category]++;
-                                });
-                                
-                                resolve(stats);
-                            };
-                            
-                            request.onerror = function(event) {
-                                reject('Failed to get items from local database');
-                            };
-                        });
-                    }
-                    
-                    const ctx = document.getElementById('categoryChart').getContext('2d');
-                    const chart = Chart.getChart(ctx);
-                    
-                    if (chart) {
-                        // Prepare chart data
-                        const labels = Object.keys(categoryStats).map(category => 
-                            category.charAt(0).toUpperCase() + category.slice(1)
-                        );
-                        const data = Object.values(categoryStats);
-                        
-                        // Update chart
-                        chart.data.labels = labels;
-                        chart.data.datasets[0].data = data;
-                        chart.update();
-                    }
-                } catch (error) {
-                    console.error('Error updating category chart:', error);
-                }
-            }
-            
-            // Update summary cards
-            async function updateSummaryCards() {
-                try {
-                    let summaryStats;
-                    
-                    if (online) {
-                        const response = await fetch('includes/inventory_api.php?stats=summary');
-                        summaryStats = await response.json();
-                        
-                        if (!response.ok) {
-                            throw new Error(summaryStats.message || 'Failed to get summary stats');
-                        }
-                    } else {
-                        // Get stats from IndexedDB
-                        summaryStats = await new Promise((resolve, reject) => {
-                            const transaction = db.transaction(['inventory'], 'readonly');
-                            const store = transaction.objectStore('inventory');
-                            const request = store.getAll();
-                            
-                            request.onsuccess = function(event) {
-                                const items = event.target.result;
-                                const stats = {
-                                    total: items.length,
-                                    in_stock: 0,
-                                    low_stock: 0,
-                                    out_of_stock: 0
-                                };
-                                
-                                items.forEach(item => {
-                                    if (item.status === 'in-stock') stats.in_stock++;
-                                    if (item.status === 'low-stock') stats.low_stock++;
-                                    if (item.status === 'out-of-stock') stats.out_of_stock++;
-                                });
-                                
-                                resolve(stats);
-                            };
-                            
-                            request.onerror = function(event) {
-                                reject('Failed to get items from local database');
-                            };
-                        });
-                    }
-                    
-                    // Update cards
-                    document.getElementById('total-items-count').textContent = summaryStats.total || 0;
-                    document.getElementById('in-stock-count').textContent = summaryStats.in_stock || 0;
-                    document.getElementById('low-stock-count').textContent = summaryStats.low_stock || 0;
-                    document.getElementById('out-of-stock-count').textContent = summaryStats.out_of_stock || 0;
-                } catch (error) {
-                    console.error('Error updating summary cards:', error);
-                }
-            }
-            
-            // Add item to server
-            async function addItemToServer(itemData) {
-                const response = await fetch('includes/inventory_api.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(itemData)
-                });
-                
-                const result = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(result.message || 'Failed to add item');
-                }
-                
-                return result;
-            }
-            
-            // Update item on server
-            async function updateItemOnServer(id, itemData) {
-                const response = await fetch('includes/inventory_api.php', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id, ...itemData })
-                });
-                
-                const result = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(result.message || 'Failed to update item');
-                }
-                
-                return result;
-            }
-            
-            // Delete item from server
-            async function deleteItemFromServer(id) {
-                const response = await fetch(`includes/inventory_api.php?id=${id}`, {
-                    method: 'DELETE'
-                });
-                
-                const result = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(result.message || 'Failed to delete item');
-                }
-                
-                return result;
-            }
-            
-            // Add activity to server
-            async function addActivityToServer(activityData) {
                 const response = await fetch('includes/activity_api.php', {
                     method: 'POST',
                     headers: {
@@ -2870,127 +1664,204 @@ function getStatusClass($status) {
                 }
                 
                 return result;
+            } catch (error) {
+                console.error('Error adding activity:', error);
+                throw error;
             }
-            
-            // Helper function to get item icon
-            function getItemIcon(category) {
-                switch(category) {
-                    case 'equipment': return 'fa-tractor';
-                    case 'seeds': return 'fa-seedling';
-                    case 'fertilizers': return 'fa-flask';
-                    case 'tools': return 'fa-tools';
-                    default: return 'fa-box';
-                }
-            }
-            
-            // Status calculation and helper functions
-            function calculateStatus(quantity) {
-                if (quantity <= 0) return 'out-of-stock';
-                if (quantity < 10) return 'low-stock';
-                return 'in-stock';
-            }
+        }
 
-            function getStatusText(status) {
-                switch(status) {
-                    case 'in-stock': return 'In Stock';
-                    case 'low-stock': return 'Low Stock';
-                    case 'out-of-stock': return 'Out of Stock';
-                    default: return 'Unknown';
-                }
-            }
-
-            function getStatusClass(status) {
-                switch(status) {
-                    case 'in-stock': return 'status-in-stock';
-                    case 'low-stock': return 'status-low-stock';
-                    case 'out-of-stock': return 'status-out-of-stock';
-                    default: return 'bg-gray-100 text-gray-800';
-                }
-            }
-
-            function getStatusColorClass(status) {
-                switch(status) {
-                    case 'in-stock': return 'text-green-800 bg-green-100';
-                    case 'low-stock': return 'text-yellow-800 bg-yellow-100';
-                    case 'out-of-stock': return 'text-red-800 bg-red-100';
-                    default: return 'text-gray-800 bg-gray-100';
-                }
-            }
-
+        // Initialize category chart
+        function initCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
             
-            // Helper functions for activities
-            function getActivityIcon(type) {
-                switch(type) {
-                    case 'item_added': return 'fa-plus';
-                    case 'item_updated': return 'fa-edit';
-                    case 'item_deleted': return 'fa-trash';
-                    case 'item_low_stock': return 'fa-exclamation-triangle';
-                    case 'item_out_of_stock': return 'fa-times-circle';
-                    default: return 'fa-info-circle';
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.7)',
+                            'rgba(255, 99, 132, 0.7)',
+                            'rgba(75, 192, 192, 0.7)',
+                            'rgba(153, 102, 255, 0.7)',
+                            'rgba(255, 159, 64, 0.7)',
+                            'rgba(255, 205, 86, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(75, 192, 192, 1)',
+                            'rgba(153, 102, 255, 1)',
+                            'rgba(255, 159, 64, 1)',
+                            'rgba(255, 205, 86, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw} items`;
+                                }
+                            }
+                        }
+                    }
                 }
-            }
-
-            function getActivityIconColor(type) {
-                switch(type) {
-                    case 'item_added': return 'bg-blue-500';
-                    case 'item_updated': return 'bg-yellow-500';
-                    case 'item_deleted': return 'bg-red-500';
-                    case 'item_low_stock': return 'bg-orange-500';
-                    case 'item_out_of_stock': return 'bg-purple-500';
-                    default: return 'bg-gray-500';
-                }
-            }
-            
-            // Helper function to format dates
-            function formatDate(dateString) {
-                if (!dateString) return '';
-                const date = new Date(dateString);
-                return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-            }
-            
-            function formatDateTime(dateString) {
-                if (!dateString) return '';
-                const date = new Date(dateString);
-                return date.toLocaleString('en-US', {
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-            
-            // Show success toast
-            function showSuccessToast(message) {
-                const toast = document.createElement('div');
-                toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg flex items-center';
-                toast.innerHTML = `
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <span>${message}</span>
-                `;
-                document.body.appendChild(toast);
+            });
+        }
+        
+        // Update category chart with data
+        async function updateCategoryChart() {
+            try {
+                const response = await fetch('includes/inventory_api.php?stats=category');
+                const categoryStats = await response.json();
                 
-                setTimeout(() => {
-                    toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
-                    setTimeout(() => toast.remove(), 300);
-                }, 3000);
-            }
-            
-            // Show error toast
-            function showErrorToast(message) {
-                const toast = document.createElement('div');
-                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg flex items-center';
-                toast.innerHTML = `
-                    <i class="fas fa-exclamation-circle mr-2"></i>
-                    <span>${message}</span>
-                `;
-                document.body.appendChild(toast);
+                if (!response.ok) {
+                    throw new Error(categoryStats.message || 'Failed to get category stats');
+                }
                 
-                setTimeout(() => {
-                    toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
-                    setTimeout(() => toast.remove(), 300);
-                }, 3000);
+                const ctx = document.getElementById('categoryChart').getContext('2d');
+                const chart = Chart.getChart(ctx);
+                
+                if (chart) {
+                    // Prepare chart data
+                    const labels = Object.keys(categoryStats).map(category => 
+                        category.charAt(0).toUpperCase() + category.slice(1)
+                    );
+                    const data = Object.values(categoryStats);
+                    
+                    // Update chart
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = data;
+                    chart.update();
+                }
+            } catch (error) {
+                console.error('Error updating category chart:', error);
             }
-        </script>
-    </body>
+        }
+        
+        // Update summary cards
+        async function updateSummaryCards() {
+            try {
+                const response = await fetch('includes/inventory_api.php?stats=summary');
+                const summaryStats = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(summaryStats.message || 'Failed to get summary stats');
+                }
+                
+                // Update cards
+                document.getElementById('total-items-count').textContent = summaryStats.total || 0;
+                document.getElementById('in-stock-count').textContent = summaryStats.in_stock || 0;
+                document.getElementById('low-stock-count').textContent = summaryStats.low_stock || 0;
+                document.getElementById('out-of-stock-count').textContent = summaryStats.out_of_stock || 0;
+            } catch (error) {
+                console.error('Error updating summary cards:', error);
+            }
+        }
+        
+        // Helper function to get item icon
+        function getItemIcon(category) {
+            switch(category) {
+                case 'equipment': return 'fa-tractor';
+                case 'seeds': return 'fa-seedling';
+                case 'fertilizers': return 'fa-flask';
+                case 'tools': return 'fa-tools';
+                default: return 'fa-box';
+            }
+        }
+        
+        // Helper function to get status color class
+        function getStatusColorClass(status) {
+            switch(status) {
+                case 'in-stock': return 'text-green-800 bg-green-100';
+                case 'low-stock': return 'text-yellow-800 bg-yellow-100';
+                case 'out-of-stock': return 'text-red-800 bg-red-100';
+                default: return 'text-gray-800 bg-gray-100';
+            }
+        }
+        
+        // Helper functions for activities
+        function getActivityIcon(type) {
+            switch(type) {
+                case 'item_added': return 'fa-plus';
+                case 'item_updated': return 'fa-edit';
+                case 'item_deleted': return 'fa-trash';
+                case 'item_low_stock': return 'fa-exclamation-triangle';
+                case 'item_out_of_stock': return 'fa-times-circle';
+                default: return 'fa-info-circle';
+            }
+        }
+
+        function getActivityIconColor(type) {
+            switch(type) {
+                case 'item_added': return 'bg-blue-500';
+                case 'item_updated': return 'bg-yellow-500';
+                case 'item_deleted': return 'bg-red-500';
+                case 'item_low_stock': return 'bg-orange-500';
+                case 'item_out_of_stock': return 'bg-purple-500';
+                default: return 'bg-gray-500';
+            }
+        }
+        
+        // Helper function to format dates
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+        
+        function formatDateTime(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Show success toast
+        function showSuccessToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg flex items-center';
+            toast.innerHTML = `
+                <i class="fas fa-check-circle mr-2"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+        
+        // Show error toast
+        function showErrorToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg flex items-center';
+            toast.innerHTML = `
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
 </html>

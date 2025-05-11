@@ -229,12 +229,12 @@ function getInitials($name) {
 }
 @media (min-width: 640px) {
             .sm\:max-w-2xl {
-                max-width: 40rem;
+                max-width: 52rem;
             }
         }
         @media (min-width: 768px) {
             .md\:max-w-2xl {
-                max-width: 50rem;
+                max-width: 56rem;
             }
         }
         @media (min-width: 1024px) {
