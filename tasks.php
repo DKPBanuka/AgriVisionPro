@@ -1,4 +1,7 @@
 <?php
+// Enable detailed error logging
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__.'/../logs/php_errors.log');
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -30,13 +33,79 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
 
         $response = ['success' => false, 'message' => 'Unknown action'];
         
-        // Rest of your code...
+        switch ($action) {
+            case 'create':
+                $stmt = $pdo->prepare("INSERT INTO tasks (title, description, assigned_to, due_date, status, priority, user_id, created_at, updated_at) 
+                                      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+                $success = $stmt->execute([
+                    $taskData['title'],
+                    $taskData['description'] ?? null,
+                    $taskData['assignedTo'] ?? null,
+                    $taskData['dueDate'] ?? null,
+                    $taskData['status'] ?? 'pending',
+                    $taskData['priority'] ?? 'medium',
+                    $_SESSION['user_id']
+                ]);
+                
+                if ($success) {
+                    $taskId = $pdo->lastInsertId();
+                    $response = ['success' => true, 'message' => 'Task created', 'taskId' => $taskId];
+                } else {
+                    throw new Exception('Failed to create task');
+                }
+                break;
+                
+            case 'update':
+                $stmt = $pdo->prepare("UPDATE tasks SET 
+                    title = ?, 
+                    description = ?, 
+                    assigned_to = ?, 
+                    due_date = ?, 
+                    status = ?, 
+                    priority = ?, 
+                    updated_at = NOW()
+                    WHERE id = ? AND user_id = ?");
+                $success = $stmt->execute([
+                    $taskData['title'],
+                    $taskData['description'] ?? null,
+                    $taskData['assignedTo'] ?? null,
+                    $taskData['dueDate'] ?? null,
+                    $taskData['status'] ?? 'pending',
+                    $taskData['priority'] ?? 'medium',
+                    $taskData['id'],
+                    $_SESSION['user_id']
+                ]);
+                
+                if ($success) {
+                    $response = ['success' => true, 'message' => 'Task updated'];
+                } else {
+                    throw new Exception('Failed to update task');
+                }
+                break;
+                
+            case 'delete':
+                $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?");
+                $success = $stmt->execute([$requestData['id'], $_SESSION['user_id']]);
+                
+                if ($success) {
+                    $response = ['success' => true, 'message' => 'Task deleted'];
+                } else {
+                    throw new Exception('Failed to delete task');
+                }
+                break;
+        }
+        
+        echo json_encode($response);
+        exit;
         
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         exit;
     }
 }
+
+// Rest of your PHP code...
+
 
 // --- The rest of your existing tasks.php code (HTML generation, etc.) follows here ---
 checkAuthentication(); 
@@ -283,59 +352,59 @@ function getInitials($name) {
     <!-- App Container -->
     <div class="flex h-full">
         <!-- Dynamic Sidebar -->
-        <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl">
-            <div class="p-4 flex items-center space-x-3">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center">
-                    <img src="./images/logo.png" alt="App Logo" class="h-10 w-10 object-contain">
-                </div>
-                <h1 class="text-xl font-bold">AgriVision Pro</h1>
-            </div>
+        <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col">
+            <div class="p-5 flex items-center space-x-3 flex-shrink-0"> <div class="w-10 h-10 rounded-full flex items-center justify-center"> <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain"> </div>
+                <h1 class="text-xl font-bold">AgriVision Pro</h1> </div>
             
-            <nav class="mt-8">
-                <div class="px-4 space-y-1">
-                    <a href="index.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            <nav class="flex-grow pt-2"> <div class="px-3 space-y-0.5"> 
+                    <a href="dashboard.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
                         Dashboard
                     </a>
-                    <a href="crops.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    <a href="crops.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                         </svg>
                         Crop Management
                     </a>
-                    <a href="livestock.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    <a href="livestock.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                         Livestock
                     </a>
-                    <a href="inventory.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    <a href="inventory.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
                         Inventory
                     </a>
-                    <a href="tasks.php" class="flex items-center px-4 py-3 rounded-lg bg-blue-500 bg-opacity-30 text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    <a href="tasks.php" class="flex items-center px-3 py-2 rounded-lg bg-blue-500 bg-opacity-30 text-m text-white-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
                         Tasks
                     </a>
-                    <a href="analytics.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Analytics
-                    </a>
                 </div>
                 
-                <div class="mt-8 pt-8 border-t border-blue-700">
-                    <div class="px-4 space-y-1">
-                        <a href="settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                            <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31 2.37 2.37.996.608 2.296.07 2.572-1.065z" />
+                
+                <div class="mt-4 pt-4 border-t border-blue-700"> <div class="px-3"> <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-1">Analytics</h3> <div class="space-y-0.5"> <a href="/agrivisionpro/analytics/crop-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Crop Analytics
+                            </a>
+                            <a href="/agrivisionpro/analytics/livestock-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Livestock Analytics
+                            </a>
+                            <a href="/agrivisionpro/analytics/inventory-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Inventory Analytics
+                            </a>
+                            <a href="/agrivisionpro/analytics/financial-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Financial Analytics
+                            </a>
+                            <a href="/agrivisionpro/analytics/tasks-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Tasks Analytics
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 pt-4 border-t border-blue-700"> <div class="px-3 space-y-0.5"> <a href="settings.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31 2.37 2.37.996.608 2.296.07 2.572-1.065z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                             Settings
@@ -951,7 +1020,7 @@ function getInitials($name) {
         document.addEventListener('DOMContentLoaded', function() {
     // Database configuration
     const DB_NAME = 'AgriVisionProDB';
-    const DB_VERSION = 4;
+    const DB_VERSION = 6;
     const STORE_NAME = 'tasks';
     let db;
     let isOnline = navigator.onLine;
@@ -1031,6 +1100,8 @@ function getInitials($name) {
         };
     });
 }
+
+    
 
     async function verifyDatabase() {
         try {
@@ -1265,15 +1336,12 @@ function getInitials($name) {
                 userId: <?= $_SESSION['user_id'] ?? 0 ?>
             })
         });
-        
-        // First check if response is JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('Server returned:', text.substring(0, 200));
-            throw new Error('Server returned HTML instead of JSON');
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.message || `Server returned ${response.status}`);
         }
-        
+
         const result = await response.json();
         
         if (!result.success) {
@@ -1283,10 +1351,15 @@ function getInitials($name) {
         return result;
         
     } catch (error) {
-        console.error('Sync failed:', error);
+        console.error('Sync failed:', {
+            error: error.message,
+            taskData: taskData,
+            timestamp: new Date().toISOString()
+        });
         throw error;
     }
 }
+
     async function deleteTaskFromServer(id) {
         if (!isOnline) {
             throw new Error('Offline - cannot sync with server');
@@ -1506,44 +1579,54 @@ function getInitials($name) {
     document.getElementById('add-related-item').addEventListener('click', addRelatedItem);
 }
 
-    function toggleView() {
-        const cardView = document.getElementById('card-view');
-        const tableView = document.getElementById('table-view');
-        const viewToggle = document.getElementById('view-toggle');
+function toggleView() {
+    const cardView = document.getElementById('card-view');
+    const tableView = document.getElementById('table-view');
+    const viewToggle = document.getElementById('view-toggle');
+    
+    if (cardView.classList.contains('hidden')) {
+        // Switching to card view
+        cardView.classList.remove('hidden');
+        tableView.classList.add('hidden');
+        viewToggle.innerHTML = '<i class="fas fa-list mr-2"></i> Table View';
         
-        if (cardView.classList.contains('hidden')) {
-            cardView.classList.remove('hidden');
-            tableView.classList.add('hidden');
-            viewToggle.innerHTML = '<i class="fas fa-list mr-2"></i> Table View';
-            renderTasksCards();
-        } else {
-            cardView.classList.add('hidden');
-            tableView.classList.remove('hidden');
-            viewToggle.innerHTML = '<i class="fas fa-table mr-2"></i> Card View';
-        }
-    }
-
-    async function loadTasksTable(filters = {}) {
-    try {
-        const tasks = await getAllTasks(filters);
-        updateSummaryCards(tasks);
-        renderTasksTable(tasks);
-        renderTasksCards(tasks);
+        // Re-render cards to ensure they're up to date
+        const currentFilters = {
+            searchTerm: document.getElementById('search-tasks').value,
+            status: document.getElementById('status-filter').value,
+            priority: document.getElementById('priority-filter').value,
+            sortBy: document.getElementById('sort-by').value
+        };
         
-        // Only update chart if we have tasks
-        if (tasks && tasks.length > 0) {
-            updateStatusChart(tasks);
-        } else {
-            updateStatusChart([]); // Clear the chart
-        }
-    } catch (error) {
-        console.error('Error loading tasks:', error);
-        showAlert('Failed to load tasks. ' + error.message, 'error');
-        
-        // Ensure chart is cleared if there's an error
-        updateStatusChart([]);
+        getAllTasks(currentFilters)
+            .then(tasks => renderTasksCards(tasks))
+            .catch(error => console.error('Error loading tasks for card view:', error));
+    } else {
+        // Switching to table view
+        cardView.classList.add('hidden');
+        tableView.classList.remove('hidden');
+        viewToggle.innerHTML = '<i class="fas fa-table mr-2"></i> Card View';
     }
 }
+
+    async function loadTasksTable(filters = {}) {
+        try {
+            const tasks = await getAllTasks(filters);
+            updateSummaryCards(tasks);
+            renderTasksTable(tasks);
+            renderTasksCards(tasks); // Ensure this is called
+            
+            if (tasks && tasks.length > 0) {
+                updateStatusChart(tasks);
+            } else {
+                updateStatusChart([]);
+            }
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+            showAlert('Failed to load tasks. ' + error.message, 'error');
+            updateStatusChart([]);
+        }
+    }
 
     function updateSummaryCards(tasks) {
         if (!tasks) return;
@@ -1643,88 +1726,88 @@ function getInitials($name) {
     }
 
     function renderTasksCards(tasks) {
-        const cardView = document.getElementById('card-view');
-        
-        if (!tasks || tasks.length === 0) {
-            cardView.innerHTML = `
-                <div class="sm:col-span-2 lg:col-span-3 text-center py-10">
-                    <i class="fas fa-tasks text-4xl text-gray-300 mb-3"></i>
-                    <p class="text-gray-500">No tasks found. Click "Add New Task" to get started.</p>
-                </div>
-            `;
-            return;
-        }
-        
-        cardView.innerHTML = tasks.map(task => `
-            <div class="task-card bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:border-blue-300">
-                <div class="p-4">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="font-bold text-lg text-gray-800 mb-1">${task.title}</h3>
-                            <p class="text-sm text-gray-600 mb-2">${task.description || 'No description'}</p>
-                        </div>
-                        ${task.syncStatus === 'pending' ? 
-                            '<span class="text-yellow-500 text-xs" title="Pending sync"><i class="fas fa-cloud-upload-alt"></i></span>' : ''}
+    const cardView = document.getElementById('card-view');
+    
+    if (!tasks || tasks.length === 0) {
+        cardView.innerHTML = `
+            <div class="sm:col-span-2 lg:col-span-3 text-center py-10">
+                <i class="fas fa-tasks text-4xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500">No tasks found. Click "Add New Task" to get started.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    cardView.innerHTML = tasks.map(task => `
+        <div class="task-card bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:border-blue-300">
+            <div class="p-4">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800 mb-1">${task.title}</h3>
+                        <p class="text-sm text-gray-600 mb-2">${task.description || 'No description'}</p>
                     </div>
-                    
-                    <div class="flex items-center text-sm text-gray-500 mb-2">
-                        <i class="fas fa-user mr-1"></i>
-                        <span>${task.assignedTo || 'Unassigned'}</span>
-                    </div>
-                    
-                    <div class="flex items-center text-sm ${isOverdue(task.dueDate, task.status) ? 'text-red-500' : 'text-gray-500'} mb-3">
-                        <i class="fas fa-calendar-day mr-1"></i>
-                        <span>${formatDate(task.dueDate) || 'No due date'}</span>
-                        ${isOverdue(task.dueDate, task.status) ? 
-                            `<span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">${daysOverdue(task.dueDate)} days overdue</span>` : ''}
-                    </div>
-                    
-                    <div class="flex justify-between items-center">
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full status-${task.status}">
-                            ${capitalizeFirstLetter(task.status.replace('-', ' '))}
-                        </span>
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full priority-${task.priority}">
-                            ${capitalizeFirstLetter(task.priority)}
-                        </span>
-                    </div>
+                    ${task.syncStatus === 'pending' ? 
+                        '<span class="text-yellow-500 text-xs" title="Pending sync"><i class="fas fa-cloud-upload-alt"></i></span>' : ''}
                 </div>
                 
-                <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-2 border-t border-gray-200">
-                    <button class="view-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="View details">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="edit-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="Edit">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="delete-btn text-red-600 hover:text-red-800 p-1" data-id="${task.id}" title="Delete">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="flex items-center text-sm text-gray-500 mb-2">
+                    <i class="fas fa-user mr-1"></i>
+                    <span>${task.assignedTo || 'Unassigned'}</span>
+                </div>
+                
+                <div class="flex items-center text-sm ${isOverdue(task.dueDate, task.status) ? 'text-red-500' : 'text-gray-500'} mb-3">
+                    <i class="fas fa-calendar-day mr-1"></i>
+                    <span>${formatDate(task.dueDate) || 'No due date'}</span>
+                    ${isOverdue(task.dueDate, task.status) ? 
+                        `<span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">${daysOverdue(task.dueDate)} days overdue</span>` : ''}
+                </div>
+                
+                <div class="flex justify-between items-center">
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full status-${task.status}">
+                        ${capitalizeFirstLetter(task.status.replace('-', ' '))}
+                    </span>
+                    <span class="px-2 py-1 text-xs font-semibold rounded-full priority-${task.priority}">
+                        ${capitalizeFirstLetter(task.priority)}
+                    </span>
                 </div>
             </div>
-        `).join('');
-        
-        // Add event listeners to card buttons
-        document.querySelectorAll('.card-view .view-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = parseInt(e.target.closest('button').getAttribute('data-id'));
-                await showTaskDetails(id);
-            });
+            
+            <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-2 border-t border-gray-200">
+                <button class="view-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="View details">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="edit-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="delete-btn text-red-600 hover:text-red-800 p-1" data-id="${task.id}" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    // Add event listeners to card buttons
+    cardView.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = parseInt(e.currentTarget.getAttribute('data-id'));
+            await showTaskDetails(id);
         });
-        
-        document.querySelectorAll('.card-view .edit-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = parseInt(e.target.closest('button').getAttribute('data-id'));
-                await showEditTaskModal(id);
-            });
+    });
+    
+    cardView.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = parseInt(e.currentTarget.getAttribute('data-id'));
+            await showEditTaskModal(id);
         });
-        
-        document.querySelectorAll('.card-view .delete-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const id = parseInt(e.target.closest('button').getAttribute('data-id'));
-                await handleDeleteTask(id);
-            });
+    });
+    
+    cardView.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = parseInt(e.currentTarget.getAttribute('data-id'));
+            await handleDeleteTask(id);
         });
-    }
+    });
+}
 
     function updateStatusChart(tasks) {
     if (!tasks || tasks.length === 0) {
@@ -2412,50 +2495,43 @@ function getInitials($name) {
     }
 
     // ========== Initialize Application ========== //
-    async function initApp() {
-    try {
-        // Initialize database
-        await initDB();
-        
-        // Verify database integrity
-        await verifyDatabase();
-        
-        // Setup UI components
-        setupEventListeners(); // This calls our updated function
-        setupNotificationsDropdown();
-        handleConnectionChange();
-        
-        // Initialize chart
-        window.statusChart = null;
-        updateStatusChart([]);
-        
-        // Load initial data
-        await loadTasksTable();
-        
-        // Check for pending sync operations if online
-        if (isOnline) {
-            await syncPendingTasks();
-        }
-        
-        showNotification('Task management loaded successfully', 'success');
-        
-        // Add event listener for beforeunload to handle page refresh
-        window.addEventListener('beforeunload', () => {
-            if (pendingSync.length > 0) {
-                return "You have unsynced changes. Are you sure you want to leave?";
+        async function initApp() {
+        try {
+            await initDB();
+            await verifyDatabase();
+            
+            // Initialize both views
+            document.getElementById('card-view').classList.add('hidden');
+            document.getElementById('table-view').classList.remove('hidden');
+            
+            setupEventListeners();
+            setupNotificationsDropdown();
+            handleConnectionChange();
+            
+            window.statusChart = null;
+            updateStatusChart([]);
+            
+            await loadTasksTable();
+            
+            if (isOnline) {
+                await syncPendingTasks();
             }
-        });
-        
-    } catch (error) {
-        console.error('Initialization error:', error);
-        showAlert('Failed to initialize task management. ' + error.message, 'error');
-        
-        // Attempt to recover by reloading
-        setTimeout(() => {
-            window.location.reload();
-        }, 3000);
+            
+            showNotification('Task management loaded successfully', 'success');
+            
+            window.addEventListener('beforeunload', () => {
+                if (pendingSync.length > 0) {
+                    return "You have unsynced changes. Are you sure you want to leave?";
+                }
+            });
+        } catch (error) {
+            console.error('Initialization error:', error);
+            showAlert('Failed to initialize task management. ' + error.message, 'error');
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+        }
     }
-}
 
     // Start the application
     initApp();

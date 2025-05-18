@@ -66,7 +66,7 @@ function getInitials($name) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AgriVision Pro | Modern Farm Management</title>
-    <link rel="icon" href="./images/logo.png" type="image/png">
+    <link rel="icon" href="./images/logo1.png" type="image/png">
     <link href="./dist/output.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -117,72 +117,140 @@ function getInitials($name) {
         .user-profile-dropdown {
             min-width: 200px;
         }
+        /* Cultivation Guide Link Container */
+        .cultivation-guide-container {
+            position: relative; /* මෙය වැදගත්: hover-message එක absolute position කිරීම සඳහා container එක relative කරයි */
+            display: inline-block; /* Container එකට එහි content එක වටා enclose වීමට ඉඩ සලසයි */
+        }
+
+        /* Styling for the link itself */
+        .cultivation-guide-container .cultivation-link {
+            text-decoration: none; /* Link එකේ යටින් ඇති ඉර ඉවත් කරයි */
+            color: inherit; /* Parent element එකේ color එක inherit කරයි (Tailwind class මඟින් override වේ) */
+            display: flex; /* Icon සහ text content align කරයි */
+            align-items: center; /* අංග vertically align කරයි */
+            gap: 8px; /* Icon සහ text content අතර පරතරය */
+            position: relative; /* Hover-message එක absolute position කිරීම සඳහා link එක relative කරයි */
+            z-index: 1; /* Message bubble එකට උඩින් link එක තැබීමට */
+            /* text-blue-600 hover:text-blue-800 classes මඟින් text වර්ණය සහ hover වර්ණය set වේ */
+        }
+
+        /* Default text styling */
+        .cultivation-guide-container .default-text {
+            display: inline-block; /* inline block එකක් ලෙස පෙන්වයි */
+            /* opacity, visibility, transition hover මඟින් පාලනය වේ */
+        }
+
+        /* Hover Message Styling (Message Bubble එක) */
+        .cultivation-guide-container .hover-message {
+            position: absolute; /* link එකට සාපේක්ෂව ස්ථානගත කරයි */
+            top: 100%; /* link එකට උඩින් position කරයි */
+            left: 50%; /* link එකට සාපේක්ෂව තිරස්ව මැදට කරයි */
+            transform: translateX(-50%) translateY(-10px); /* තිරස් මැදට කිරීම සහ මුලදී ටිකක් උඩට තැබීම */
+            background-color: #331; /* Message bubble එකේ පසුබිම් වර්ණය (තද අළු) */
+            color: white; /* Message bubble එකේ අකුරු වර්ණය (සුදු) */
+            padding: 8px 12px; /* Bubble එක තුළ padding */
+            border-radius: 4px; /* Bubble එකේ දාර වටකුරු කිරීම */
+            white-space: nowrap; /* Text එක එක පේළියෙන් තබා ගැනීමට */
+            z-index: 10; /* අනෙකුත් content මතින් දර්ශනය වීමට (ඉහළ z-index) */
+            opacity: 0; /* මුලදී නොපෙනී සඟවයි */
+            visibility: hidden; /* Screen readers වලටත් නොපෙනී කරයි */
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease; /* දර්ශනය වීමේදී සහ සැඟවීමේදී සුමට animation */
+            pointer-events: none; /* Bubble එක මත click කිරීම අනෙකුත් elements වෙත යොමු කරයි */
+        }
+
+        /* Optional: Message bubble එකට යටින් කුඩා ඊතලයක් එකතු කිරීම */
+        .cultivation-guide-container .hover-message::after {
+            content: '';
+            position: absolute;
+            bottom: 100%; /* bubble එකේ පහළට ස්ථානගත කරයි */
+            left: 50%; /* තිරස්ව මැදට කරයි */
+            transform: translateX(-50%); /* තිරස් මැදට කිරීම */
+            border-width: 5px; /* ඊතලයේ ප්‍රමාණය */
+            border-style: solid; /* මායිම් style එක */
+            border-color: #333 transparent transparent transparent; /* ඊතලයේ වර්ණය (bubble background එකට ගැලපෙන්න) සහ හැඩය සකසයි */
+        }
+
+
+        /* Container එක මත hover කරන විට Message bubble එක පෙන්වීම */
+        .cultivation-guide-container:hover .hover-message {
+            opacity: 1; /* සම්පූර්ණයෙන් දර්ශනය කරයි */
+            visibility: visible; /* Visible කරයි */
+            transform: translateX(-50%) translateY(0); /* සුමටව එහි අවසාන ස්ථානයට චලනය කරයි */
+        }
+
+        /* Hover කරන විට default text එකේ opacity එක අඩු කිරීමට අවශ්‍ය නම් */
+
+        .cultivation-guide-container a:hover .default-text {
+            opacity: 0.7; // උදාහරණයක් ලෙස
+        }
+
     </style>
 </head>
 <body class="h-full overflow-hidden">
     <!-- App Container -->
     <div class="flex h-full">
-        <!-- Dynamic Sidebar -->
-        <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl">
-            <div class="p-4 flex items-center space-x-3">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center">
-                    <img src="./images/logo.png" alt="App Logo" class="h-10 w-10 object-contain">
+    <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col">
+    <div class="p-5 flex items-center space-x-3 flex-shrink-0"> <div class="w-10 h-10 rounded-full flex items-center justify-center"> <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain"> </div>
+        <h1 class="text-xl font-bold">AgriVision Pro</h1> </div>
+    
+    <nav class="flex-grow pt-2"> <div class="px-3 space-y-0.5"> 
+            <a href="dashboard.php" class="flex items-center px-3 py-2 rounded-lg bg-blue-500 bg-opacity-30 text-m text-white-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Dashboard
+            </a>
+            <a href="crops.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Crop Management
+            </a>
+            <a href="livestock.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Livestock
+            </a>
+            <a href="inventory.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                Inventory
+            </a>
+            <a href="tasks.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Tasks
+            </a>
+        </div>
+        
+        
+        <div class="mt-4 pt-4 border-t border-blue-700"> <div class="px-3"> <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-1">Analytics</h3> <div class="space-y-0.5"> <a href="/agrivisionpro/analytics/crop-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Crop Analytics
+                    </a>
+                    <a href="/agrivisionpro/analytics/livestock-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Livestock Analytics
+                    </a>
+                    <a href="/agrivisionpro/analytics/inventory-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Inventory Analytics
+                    </a>
+                    <a href="/agrivisionpro/analytics/financial-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Financial Analytics
+                    </a>
+                    <a href="/agrivisionpro/analytics/tasks-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-sm text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Tasks Analytics
+                    </a>
                 </div>
-                <h1 class="text-xl font-bold">AgriVision Pro</h1>
             </div>
-            
-            <nav class="mt-8">
-                <div class="px-4 space-y-1">
-                    <a href="dashboard.php" class="flex items-center px-4 py-3 rounded-lg bg-blue-500 bg-opacity-30 text-white-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Dashboard
-                    </a>
-                    <a href="crops.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                        </svg>
-                        Crop Management
-                    </a>
-                    <a href="livestock.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        Livestock
-                    </a>
-                    <a href="inventory.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        Inventory
-                    </a>
-                    <a href="tasks.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        Tasks
-                    </a>
-                    <a href="analytics.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                        <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Analytics
-                    </a>
-                </div>
-                <div class="mt-8 pt-8 border-t border-blue-700">
-                    <div class="px-4 space-y-1">
-                        <a href="settings.php" class="flex items-center px-4 py-3 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-blue-100 hover:text-white group">
-                            <svg class="mr-3 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31 2.37 2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Settings
-                        </a>
-                    </div>
-                </div>
-            </nav>
-        </aside>
+        </div>
+        
+        <div class="mt-4 pt-4 border-t border-blue-700"> <div class="px-3 space-y-0.5"> <a href="settings.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31 2.37 2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
+                </a>
+            </div>
+        </div>
+    </nav>
+</aside>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
@@ -268,6 +336,13 @@ function getInitials($name) {
                     <!-- Dashboard content will be loaded here by default -->
                     <div class="flex justify-between items-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-800">Farm Dashboard</h2>
+                        <div class="cultivation-guide-container">
+                            <p class="flex items-center gap-2">
+                                <a href="index.html" class="flex items-center gap-2 no-underline cultivation-link text-blue-600 hover:text-blue-800">
+                                    <i class="fas fa-book "></i> <span class="default-text">View Crop Guides</span> <span class="hover-message">Explore Detailed Cultivation Info</span>
+                                </a>
+                            </p>
+                        </div>
                         <div class="flex space-x-3">
                             <button id="add-record-btn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,6 +351,7 @@ function getInitials($name) {
                                 Add Record
                             </button>
                         </div>
+                        
                     </div>
 
                     <!-- Stats Cards -->
@@ -426,7 +502,8 @@ function getInitials($name) {
                                 <canvas id="yieldChart" class="w-full h-64"></canvas>
                             </div>
                         </div>
-
+                        
+                        
                         <!-- Task Completion -->
                         <div class="bg-white shadow rounded-lg overflow-hidden">
                             <div class="px-6 py-5 border-b border-gray-200">
@@ -519,7 +596,7 @@ function getInitials($name) {
     <script>
         // Database configuration
         const DB_NAME = 'AgriVisionProDB';
-        const DB_VERSION = 4; // Incremented to fix version change issues
+        const DB_VERSION = 6; // Incremented to fix version change issues
         const STORES = {
             CROPS: 'crops',
             LIVESTOCK: 'livestock',
