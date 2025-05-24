@@ -365,7 +365,7 @@ function getInitials($name) {
                         <div class="p-5">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                                    <i class="fas fa-paw text-white text-xl"></i>
+                                    <i class="fas fa-horse text-white text-xl"></i>
                                 </div>
                                 <div class="ml-5 w-0 flex-1">
                                     <dl>
@@ -2104,11 +2104,11 @@ function closeEditModal() {
                     <button data-id="${animal.id}" class="view-animal text-blue-600 hover:text-blue-900 mr-3 focus:outline-none" title="View Details">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button data-id="${animal.id}" class="edit-animal text-blue-600 hover:text-blue-900 mr-3 focus:outline-none" title="Edit">
+                    <button data-id="${animal.id}" class="edit-animal text-yellow-600 hover:text-yellow-900 mr-3 focus:outline-none" title="Edit">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button data-id="${animal.id}" class="delete-animal text-red-600 hover:text-red-900 focus:outline-none" title="Delete">
-                        <i class="fas fa-trash"></i>
+                        <i class="fas fa-trash-alt"></i>
                     </button>
                 </td>
             </tr>
@@ -2160,58 +2160,58 @@ function closeEditModal() {
 
         cardView.innerHTML = animals.map(animal => `
            <div class="animal-card bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:border-blue-300">
-    <div class="p-4">
-        <!-- First row with ID, Status, and Type -->
-        <div class="flex items-center justify-between">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">${animal.idTag || 'N/A'}</h3>
-            <div class="px-3 py-1 bg-green-500 text-white font-semibold rounded-full text-sm">
-                ${getStatusText(animal.status)}
-            </div>
-            <span class="text-sm text-gray-500 capitalize">${animal.type || '-'}</span>
-        </div>
-        
-        <!-- Content with animal info and image positioned to the right -->
-        <div class="flex mt-2">
-            <!-- Left column with animal details -->
-            <div class="flex-1">
-                <div class="text-sm text-gray-500">
-                    ${animal.breed || 'No breed'} • ${animal.location || 'No location'}
+            <div class="p-4">
+                <!-- First row with ID, Status, and Type -->
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">${animal.idTag || 'N/A'}</h3>
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(animal.status)}">
+                        ${getStatusText(animal.status)}
+                    </span>
+                    <span class="text-sm text-gray-500 capitalize">${animal.type || '-'}</span>
                 </div>
                 
-                <div class="mt-2">
-                    <p class="text-xs text-gray-500">Age</p>
-                    <p class="text-sm font-medium">${formatAge(animal.ageYears, animal.ageMonths)}</p>
+                <!-- Content with animal info and image positioned to the right -->
+                <div class="flex mt-2">
+                    <!-- Left column with animal details -->
+                    <div class="flex-1">
+                        <div class="text-sm text-gray-500">
+                            ${animal.breed || 'No breed'} • ${animal.location || 'No location'}
+                        </div>
+                        
+                        <div class="mt-2">
+                            <p class="text-xs text-gray-500">Age</p>
+                            <p class="text-sm font-medium">${formatAge(animal.ageYears, animal.ageMonths)}</p>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <p class="text-xs text-gray-500">Weight</p>
+                            <p class="text-sm font-medium">${animal.weight ? `${animal.weight} ${animal.weightUnit || 'kg'}` : '-'}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Right column with image -->
+                    <div class="ml-4 flex-shrink-0">
+                        <img src="${animal.image_url || `https://source.unsplash.com/random/150x100/?${encodeURIComponent(animal.type || 'animal')},livestock`}" alt="${animal.type || 'Animal'}" class=" object-contain rounded-lg"
+                        style="width: 110px; height: 110px;" >
+                    </div>
                 </div>
-                
-                <div class="mt-2">
-                    <p class="text-xs text-gray-500">Weight</p>
-                    <p class="text-sm font-medium">${animal.weight ? `${animal.weight} ${animal.weightUnit || 'kg'}` : '-'}</p>
-                </div>
-            </div>
-            
-            <!-- Right column with image -->
-            <div class="ml-4 flex-shrink-0">
-                <img src="${animal.image_url || `https://source.unsplash.com/random/150x100/?${encodeURIComponent(animal.type || 'animal')},livestock`}" alt="${animal.type || 'Animal'}" class=" object-contain rounded-lg"
-                style="width: 110px; height: 110px;" >
-            </div>
-        </div>
 
-        <!-- Action Buttons -->
-        <div class="mt-4 flex justify-between">
-            <button data-id="${animal.id}" class="view-animal inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                <i class="fas fa-eye mr-1"></i> View
-            </button>
-            <div>
-                <button data-id="${animal.id}" class="edit-animal inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    <i class="fas fa-edit mr-1"></i> Edit
-                </button>
-                <button data-id="${animal.id}" class="delete-animal inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                    <i class="fas fa-trash mr-1"></i> Delete
-                </button>
+                <!-- Action Buttons -->
+                <div class="mt-4 flex justify-between">
+                    <button data-id="${animal.id}" class="view-animal inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-eye mr-1"></i> View
+                    </button>
+                    <div>
+                        <button data-id="${animal.id}" class="edit-animal inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fas fa-edit mr-1"></i> Edit
+                        </button>
+                        <button data-id="${animal.id}" class="delete-animal inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            <i class="fas fa-trash mr-1"></i> Delete
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
         `).join('');
 
          // No need to add listeners here, event delegation is used on the card view container.

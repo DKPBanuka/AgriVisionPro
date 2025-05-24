@@ -3,8 +3,8 @@
 ini_set('log_errors', 1);
 // Ensure this log path is writable by the web server process
 ini_set('error_log', __DIR__.'/../logs/php_errors.log'); // Path එක නිවැරදි දැයි නැවත පරීක්ෂා කරන්න
-ini_set('display_errors', 1); // Production එකේදී දෝෂ සෘජුව පෙන්වීම disabled කරන්න
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0); // Production එකේදී දෝෂ සෘජුව පෙන්වීම disabled කරන්න
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
 session_start();

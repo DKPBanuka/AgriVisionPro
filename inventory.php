@@ -887,7 +887,7 @@ function getInitials($name) {
     // Array to store items currently displayed based on frontend search, filter, sort, pagination
     let currentItems = [];
 
-    let itemsPerPage = 10; // Number of items per page
+    let itemsPerPage = 20; // Number of items per page
     let currentPage = 1; // Current active page
 
     // Keep track of current view mode

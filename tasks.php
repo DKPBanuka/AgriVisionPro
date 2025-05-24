@@ -2,8 +2,8 @@
 // Enable detailed error logging
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__.'/../logs/php_errors.log');
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
 session_start();
@@ -154,7 +154,7 @@ function getInitials($name) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AgriVision Pro | Task Management</title>
-    <link rel="icon" href="./images/logo.png" type="image/png">
+    <link rel="icon" href="./images/logo1.png" type="image/png">
     <link href="./dist/output.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
