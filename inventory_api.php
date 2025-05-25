@@ -12,7 +12,7 @@ session_start();
 
 // Database connection
 // Make sure these paths are correct relative to inventory_api.php
-require_once 'includes/db_connect.php'; // Assuming db_connect.php establishes $pdo
+$pdo = require_once 'includes/db_connect.php'; // Assuming db_connect.php establishes $pdo
 
 // Check for authenticated user
 require_once 'includes/auth_functions.php'; // Assuming auth_functions.php has checkAuthentication()

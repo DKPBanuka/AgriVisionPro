@@ -11,7 +11,7 @@ session_start();
 
 // Database connection
 // Make sure these paths are correct relative to livestock_api.php
-require_once 'includes/db_connect.php'; // Assuming db_connect.php establishes $pdo
+$pdo = require_once 'includes/db_connect.php'; // Assuming db_connect.php establishes $pdo
 
 // Check for authenticated user
 require_once 'includes/auth_functions.php'; // Assuming auth_functions.php has checkAuthentication()
@@ -78,7 +78,6 @@ try {
 
 
     // Use PDO connection provided by db_connect.php
-    global $pdo;
 
     if (!$pdo) {
          throw new Exception('Database connection not established.');

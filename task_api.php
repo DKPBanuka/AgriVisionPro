@@ -10,7 +10,7 @@ error_reporting(E_ALL);
 session_start();
 
 // Database connection
-require_once 'includes/db_connect.php'; // Assuming db_connect.php establishes $pdo
+$pdo = require_once 'includes/db_connect.php'; // Assuming db_connect.php establishes $pdo
 
 // Check for authenticated user
 require_once 'includes/auth_functions.php'; // Assuming auth_functions.php has checkAuthentication()

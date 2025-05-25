@@ -7,7 +7,7 @@ ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
 
 session_start();
-require_once 'includes/db_connect.php';
+$pdo = require_once 'includes/db_connect.php';
 require_once 'includes/auth_functions.php';
 
 // Check if this is an AJAX request for a task operation
@@ -1165,15 +1165,125 @@ function getInitials($name) {
     }
 
     async function getTask(id) {
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            
-            const request = store.get(id);
-            
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = (event) => reject(event.target.error);
+        // Try to get from IndexedDB first
+        const localTask = await new Promise((resolve, reject) => {
+            try {
+                if (!db) {
+                    console.warn('getTask: DB not initialized when trying to read from IndexedDB. Proceeding to fetch from server.');
+                    resolve(null); // Resolve with null if DB is not ready
+                    return;
+                }
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(id);
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => {
+                    console.error('IndexedDB getTask error:', event.target.error);
+                    // Don't reject here, allow fallback to server fetch
+                    resolve(null); 
+                };
+            } catch (e) {
+                console.error('Exception in IndexedDB getTask:', e);
+                resolve(null); // Fallback to server fetch
+            }
         });
+
+        if (localTask) {
+            // console.log(`Task ${id} found in IndexedDB.`);
+            // Optionally, add conditions here to force server refresh, e.g., based on last sync time
+            // For now, if found locally, return it. This was the original behavior.
+            // To test the server path for the error, you might temporarily comment this return.
+            // return localTask; 
+        }
+        
+        // If not in IndexedDB or if a server refresh is needed (logic for which is not yet implemented),
+        // then fetch from the server. This is the part corresponding to the "apiRequest" from the error.
+        // console.log(`Task ${id} not in IndexedDB or needs refresh. Fetching from server...`);
+        
+        const response = await fetch('task_api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest' // Standard header for AJAX
+            },
+            body: JSON.stringify({ 
+                action: 'get_task_details', 
+                taskId: id,
+                userId: <?= $_SESSION['user_id'] ?? 0 ?> // Ensure userId is available and correct
+            })
+        });
+
+        if (!response.ok) {
+            let errorText = `Server Error (${response.status}): ${response.statusText}`;
+            try {
+                // Read the body ONCE as text for error information
+                const bodyText = await response.text(); 
+                
+                // Attempt to parse as JSON if it might contain a structured error message
+                try {
+                    const errorJson = JSON.parse(bodyText);
+                    if (errorJson && errorJson.message) {
+                        errorText = `API Error (${response.status}): ${errorJson.message}`;
+                    } else {
+                        // If successfully parsed but no .message, use a snippet of the text
+                        const displayError = bodyText.length > 200 ? bodyText.substring(0, 200) + "..." : bodyText;
+                        errorText = `API Error (${response.status}): ${response.statusText}. Details: ${displayError}`;
+                    }
+                } catch (e) {
+                    // Parsing as JSON failed, means the error response was likely HTML or plain text
+                    const displayError = bodyText.length > 200 ? bodyText.substring(0, 200) + "..." : bodyText;
+                    errorText = `API Error (${response.status}): ${response.statusText}. Server response: ${displayError}`;
+                }
+            } catch (e) {
+                // This catch is for if .text() itself fails, though rare.
+                console.error('Failed to read error response body:', e);
+            }
+            console.error('Error in getTask server fetch:', errorText);
+            throw new Error(errorText);
+        }
+
+        // If response.ok is true, expect JSON
+        try {
+            const data = await response.json(); // Read body ONCE as JSON
+            if (data.success && data.task) {
+                // Optionally, update IndexedDB with the fetched task
+                try {
+                    if (db) {
+                        const updateTransaction = db.transaction([STORE_NAME], 'readwrite');
+                        const updateStore = updateTransaction.objectStore(STORE_NAME);
+                        // Ensure the task has an 'id' field matching the keyPath for IndexedDB.
+                        // If task_api.php returns 'id' correctly, this should work.
+                        // If task_api.php returns task ID as 'taskId', map it to 'id'.
+                        let taskToStore = data.task;
+                        if (taskToStore.taskId && !taskToStore.id) {
+                            taskToStore.id = taskToStore.taskId;
+                        }
+                         if (!taskToStore.id && id) { // Fallback if task_api.php doesn't include id
+                            taskToStore.id = id;
+                        }
+
+                        if (taskToStore.id) { // Only store if there's an ID
+                            updateStore.put({...taskToStore, syncStatus: 'synced', updatedAt: new Date()});
+                        } else {
+                            console.warn("Task from server is missing an ID, cannot store in IndexedDB", taskToStore);
+                        }
+                    }
+                } catch (dbError) {
+                    console.error("Failed to update IndexedDB with server task:", dbError);
+                }
+                return data.task;
+            } else {
+                throw new Error(data.message || 'Failed to get task details from API (server indicated failure).');
+            }
+        } catch (e) {
+            // This catch is for errors during response.json() parsing (e.g., malformed JSON from server)
+            console.error('Error parsing JSON response in getTask:', e.message);
+            // It's possible the server sent a 200 OK but with non-JSON content.
+            // We don't have response.text() here as it would be a second read.
+            // So, we throw a generic parsing error.
+            throw new Error(`Failed to parse task details from server: ${e.message}. Check server response format.`);
+        }
     }
 
     async function getAllTasks(filters = {}) {
