@@ -1209,8 +1209,7 @@ function getInitials($name) {
             },
             body: JSON.stringify({ 
                 action: 'get_task_details', 
-                taskId: id,
-                userId: <?= $_SESSION['user_id'] ?? 0 ?> // Ensure userId is available and correct
+                taskId: id
             })
         });
 
