@@ -2,112 +2,14 @@
 // Enable detailed error logging
 ini_set('log_errors', 1);
 ini_set('error_log', __DIR__.'/../logs/php_errors.log');
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
+ini_set('display_errors', 1); // Keep for initial debugging, can be turned off for production
+ini_set('display_startup_errors', 1); // Keep for initial debugging
 error_reporting(E_ALL);
 
 session_start();
-require_once 'includes/db_connect.php';
+require_once 'includes/db_connect.php'; // Still needed for profile data
 require_once 'includes/auth_functions.php';
 
-// Check if this is an AJAX request for a task operation
-if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-    header('Content-Type: application/json');
-
-    try {
-        $jsonInput = file_get_contents('php://input');
-        $requestData = json_decode($jsonInput, true);
-
-        if ($requestData === null) {
-            throw new Exception('Invalid JSON data received');
-        }
-
-        $action = $requestData['action'] ?? null;
-        $taskData = $requestData['task'] ?? null;
-        $userId = $requestData['userId'] ?? null;
-
-        // Check user session
-        if (empty($_SESSION['user_id'])) {
-            throw new Exception('User not logged in');
-        }
-
-        $response = ['success' => false, 'message' => 'Unknown action'];
-        
-        switch ($action) {
-            case 'create':
-                $stmt = $pdo->prepare("INSERT INTO tasks (title, description, assigned_to, due_date, status, priority, user_id, created_at, updated_at) 
-                                      VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
-                $success = $stmt->execute([
-                    $taskData['title'],
-                    $taskData['description'] ?? null,
-                    $taskData['assignedTo'] ?? null,
-                    $taskData['dueDate'] ?? null,
-                    $taskData['status'] ?? 'pending',
-                    $taskData['priority'] ?? 'medium',
-                    $_SESSION['user_id']
-                ]);
-                
-                if ($success) {
-                    $taskId = $pdo->lastInsertId();
-                    $response = ['success' => true, 'message' => 'Task created', 'taskId' => $taskId];
-                } else {
-                    throw new Exception('Failed to create task');
-                }
-                break;
-                
-            case 'update':
-                $stmt = $pdo->prepare("UPDATE tasks SET 
-                    title = ?, 
-                    description = ?, 
-                    assigned_to = ?, 
-                    due_date = ?, 
-                    status = ?, 
-                    priority = ?, 
-                    updated_at = NOW()
-                    WHERE id = ? AND user_id = ?");
-                $success = $stmt->execute([
-                    $taskData['title'],
-                    $taskData['description'] ?? null,
-                    $taskData['assignedTo'] ?? null,
-                    $taskData['dueDate'] ?? null,
-                    $taskData['status'] ?? 'pending',
-                    $taskData['priority'] ?? 'medium',
-                    $taskData['id'],
-                    $_SESSION['user_id']
-                ]);
-                
-                if ($success) {
-                    $response = ['success' => true, 'message' => 'Task updated'];
-                } else {
-                    throw new Exception('Failed to update task');
-                }
-                break;
-                
-            case 'delete':
-                $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?");
-                $success = $stmt->execute([$requestData['id'], $_SESSION['user_id']]);
-                
-                if ($success) {
-                    $response = ['success' => true, 'message' => 'Task deleted'];
-                } else {
-                    throw new Exception('Failed to delete task');
-                }
-                break;
-        }
-        
-        echo json_encode($response);
-        exit;
-        
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-        exit;
-    }
-}
-
-// Rest of your PHP code...
-
-
-// --- The rest of your existing tasks.php code (HTML generation, etc.) follows here ---
 checkAuthentication(); 
 
 // Get user details from session and database
@@ -352,8 +254,8 @@ function getInitials($name) {
     <!-- App Container -->
     <div class="flex h-full">
         <!-- Dynamic Sidebar -->
-        <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col">
-            <div class="p-5 flex items-center space-x-3 flex-shrink-0"> <div class="w-10 h-10 rounded-full flex items-center justify-center"> <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain"> </div>
+        <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col overflow-y-auto">
+            <div class="p-5 flex items-center space-x-3 flex-shrink-0 bg-gradient-to-b from-blue-900 to-blue-900 sticky top-0 z-10"> <div class="w-10 h-10 rounded-full flex items-center justify-center"> <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain"> </div>
                 <h1 class="text-xl font-bold">AgriVision Pro</h1> </div>
             
             <nav class="flex-grow pt-2"> <div class="px-3 space-y-0.5"> 
@@ -639,7 +541,7 @@ function getInitials($name) {
                 
                 <!-- Task Management -->
                 <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center overflow-x-auto">
                         <div class="flex items-center space-x-4">
                             <div class="relative w-64">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -828,9 +730,40 @@ function getInitials($name) {
                                 </button>
                             </div>
                             
+                            <!-- Related Items Section -->
+                            <div class="sm:col-span-6 border-t border-gray-200 pt-6 mt-6">
+                                <h4 class="text-lg font-medium text-gray-800 mb-3">Related Items</h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label for="related-item-type-select" class="block text-sm font-medium text-gray-700">Item Type</label>
+                                        <select id="related-item-type-select" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                            <option value="">-- Select Type --</option>
+                                            <option value="crop">Crop</option>
+                                            <option value="livestock">Livestock</option>
+                                            <option value="inventory">Inventory Item</option>
+                                            <!-- Add other types as needed -->
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="related-item-id-input" class="block text-sm font-medium text-gray-700">Item ID or Name (Search coming soon)</label>
+                                        <input type="text" id="related-item-id-input" placeholder="Enter ID (e.g., 123)" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <!-- Future: This input could be replaced/enhanced with a search/autocomplete component -->
+                                    </div>
+                                    <button type="button" id="btn-add-related-item-to-task" class="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                        <i class="fas fa-plus mr-2"></i> Add Related Item
+                                    </button>
+                                    <div id="current-related-items-list" class="mt-3 space-y-2">
+                                        <!-- Dynamically added related items will appear here -->
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <!-- Attachments Section -->
-                            <div class="sm:col-span-6">
+                            <div class="sm:col-span-6 border-t border-gray-200 pt-6 mt-6">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Attachments</label>
+                                <div id="existing-attachments-list" class="mb-3 space-y-2">
+                                    <!-- Existing attachments (when editing) will be listed here by JS -->
+                                </div>
                                 <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md relative">
                                     <div id="file-upload-area" class="space-y-1 text-center">
                                         <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
@@ -1018,633 +951,368 @@ function getInitials($name) {
     <!-- JavaScript -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-    // Database configuration
-    const DB_NAME = 'AgriVisionProDB';
-    const DB_VERSION = 6;
-    const STORE_NAME = 'tasks';
-    let db;
     let isOnline = navigator.onLine;
-    let pendingSync = [];
+    const TASKS_API_URL = 'tasks_api.php';
+    const currentUserId = <?php echo $_SESSION['user_id'] ?? 'null'; ?>;
 
-    // Initialize the database
-    async function initDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
+    // State variables for Add/Edit modal
+    let currentTaskRelatedItems = [];
+    let attachmentsToDelete = []; // Stores IDs of attachments marked for deletion
+
+
+    if (!currentUserId) {
+        console.error("User ID not found. Operations will likely fail.");
+        showErrorToast("User session error. Please re-login.");
+    }
+
+    // ========== Toast Notification Functions ========== //
+    function showToast(message, type = 'info') {
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.id = toastId;
+        toast.className = `fixed bottom-5 right-5 p-4 rounded-md shadow-lg text-white z-[1000] transition-all duration-300 ease-in-out transform translate-x-full opacity-0`;
         
-        request.onerror = (event) => {
-            console.error('Database error:', event.target.error);
-            reject(event.target.error);
+        const icons = {
+            info: '<i class="fas fa-info-circle mr-2"></i>',
+            success: '<i class="fas fa-check-circle mr-2"></i>',
+            error: '<i class="fas fa-exclamation-circle mr-2"></i>',
+        };
+        
+        const colors = {
+            info: 'bg-blue-500',
+            success: 'bg-green-600',
+            error: 'bg-red-600',
         };
 
-        request.onsuccess = (event) => {
-            db = event.target.result;
-            
-            // Add version change handler to prevent errors
-            db.onversionchange = () => {
-                db.close();
-                console.log('Database is outdated, please reload the page.');
-                showAlert('Database updated. Please refresh the page.', 'info');
-            };
-            
-            console.log('Database initialized successfully');
-            resolve(db);
-        };
-
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            console.log('Database upgrade needed');
-            
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, { 
-                    keyPath: 'id', 
-                    autoIncrement: true 
-                });
-                
-                store.createIndex('title', 'title', { unique: false });
-                store.createIndex('status', 'status', { unique: false });
-                store.createIndex('priority', 'priority', { unique: false });
-                store.createIndex('dueDate', 'dueDate', { unique: false });
-                store.createIndex('syncStatus', 'syncStatus', { unique: false });
-                
-                // Add sample tasks if needed
-                const sampleTasks = [
-                    {
-                        title: 'Harvest corn in Field 3',
-                        description: 'Use the combine harvester to collect corn if weather permits',
-                        assignedTo: 'John Doe',
-                        dueDate: '2025-03-25',
-                        status: 'overdue',
-                        priority: 'high',
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                        syncStatus: 'synced',
-                        statusHistory: [
-                            {
-                                status: 'pending',
-                                date: new Date('2025-03-01'),
-                                changedBy: 'System'
-                            },
-                            {
-                                status: 'overdue',
-                                date: new Date('2025-03-26'),
-                                changedBy: 'System'
-                            }
-                        ]
-                    }
-                ];
-                
-                sampleTasks.forEach(task => {
-                    store.add(task);
-                });
-            }
-        };
-    });
-}
-
-    
-
-    async function verifyDatabase() {
-        try {
-            const transaction = db.transaction([STORE_NAME], 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.getAll();
-            
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => {
-                    const tasks = request.result || [];
-                    console.log(`Database contains ${tasks.length} tasks`);
-                    resolve(true);
-                };
-                
-                request.onerror = (event) => {
-                    console.error('Database verification failed:', event.target.error);
-                    reject(event.target.error);
-                };
-            });
-        } catch (error) {
-            console.error('Error verifying database:', error);
-            throw error;
-        }
-    }
-
-
-    // ========== CRUD Operations ========== //
-    async function addTask(taskData) {
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            
-            // Set sync status based on online status
-            taskData.syncStatus = isOnline ? 'synced' : 'pending';
-            taskData.createdAt = new Date();
-            taskData.updatedAt = new Date();
-            
-            const request = store.add(taskData);
-            
-            request.onsuccess = async () => {
-                const taskId = request.result;
-                if (isOnline) {
-                    try {
-                        await syncTaskToServer({...taskData, id: taskId});
-                        showNotification('Task created and synced to server', 'success');
-                    } catch (error) {
-                        console.error('Sync error:', error);
-                        await updateTask(taskId, {syncStatus: 'pending'});
-                        pendingSync.push({type: 'add', data: {...taskData, id: taskId}});
-                        showNotification('Task created offline. Will sync when online', 'warning');
-                    }
-                } else {
-                    pendingSync.push({type: 'add', data: {...taskData, id: taskId}});
-                    showNotification('Task created offline. Will sync when online', 'warning');
-                }
-                resolve(taskId);
-            };
-            
-            request.onerror = (event) => reject(event.target.error);
-        });
-    }
-
-    async function getTask(id) {
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            
-            const request = store.get(id);
-            
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = (event) => reject(event.target.error);
-        });
-    }
-
-    async function getAllTasks(filters = {}) {
-        return new Promise((resolve, reject) => {
-            if (!db) {
-                reject('Database not initialized');
-                return;
-            }
-
-            const transaction = db.transaction([STORE_NAME], 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            
-            const request = store.getAll();
-            
-            request.onsuccess = () => {
-                let tasks = request.result || [];
-                
-                // Apply filters
-                if (filters.searchTerm) {
-                    const term = filters.searchTerm.toLowerCase();
-                    tasks = tasks.filter(task => 
-                        task.title.toLowerCase().includes(term) || 
-                        (task.description && task.description.toLowerCase().includes(term)) ||
-                        (task.assignedTo && task.assignedTo.toLowerCase().includes(term))
-                    );
-                }
-                
-                if (filters.status && filters.status !== 'all') {
-                    tasks = tasks.filter(task => task.status === filters.status);
-                }
-                
-                if (filters.priority && filters.priority !== 'all') {
-                    tasks = tasks.filter(task => task.priority === filters.priority);
-                }
-                
-                // Mark overdue tasks
-                const today = new Date().toISOString().split('T')[0];
-                tasks.forEach(task => {
-                    if (task.dueDate < today && task.status !== 'completed') {
-                        task.status = 'overdue';
-                    }
-                });
-                
-                // Sort tasks
-                if (filters.sortBy) {
-                    tasks = sortTasks(tasks, filters.sortBy);
-                }
-                
-                resolve(tasks);
-            };
-            
-            request.onerror = (event) => reject(event.target.error);
-        });
-    }
-
-    async function updateTask(id, updates) {
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            
-            const getRequest = store.get(id);
-            
-            getRequest.onsuccess = async () => {
-                const currentData = getRequest.result;
-                if (!currentData) {
-                    reject('Task not found');
-                    return;
-                }
-                
-                const updatedData = { 
-                    ...currentData, 
-                    ...updates,
-                    updatedAt: new Date(),
-                    syncStatus: isOnline ? 'synced' : 'pending'
-                };
-                
-                const putRequest = store.put(updatedData);
-                
-                putRequest.onsuccess = async () => {
-                    if (isOnline) {
-                        try {
-                            await syncTaskToServer(updatedData);
-                            showNotification('Task updated and synced to server', 'success');
-                        } catch (error) {
-                            console.error('Sync error:', error);
-                            await updateTask(id, {syncStatus: 'pending'});
-                            pendingSync.push({type: 'update', data: updatedData});
-                            showNotification('Task updated offline. Will sync when online', 'warning');
-                        }
-                    } else {
-                        pendingSync.push({type: 'update', data: updatedData});
-                        showNotification('Task updated offline. Will sync when online', 'warning');
-                    }
-                    resolve(putRequest.result);
-                };
-                
-                putRequest.onerror = (event) => reject(event.target.error);
-            };
-            
-            getRequest.onerror = (event) => reject(event.target.error);
-        });
-    }
-
-    async function deleteTask(id) {
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction([STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(STORE_NAME);
-            
-            const getRequest = store.get(id);
-            
-            getRequest.onsuccess = async () => {
-                const taskData = getRequest.result;
-                if (!taskData) {
-                    reject('Task not found');
-                    return;
-                }
-                
-                const deleteRequest = store.delete(id);
-                
-                deleteRequest.onsuccess = async () => {
-                    if (isOnline) {
-                        try {
-                            await deleteTaskFromServer(id);
-                            showNotification('Task deleted from server', 'success');
-                        } catch (error) {
-                            console.error('Sync error:', error);
-                            pendingSync.push({type: 'delete', data: {id}});
-                            showNotification('Task deleted offline. Will sync when online', 'warning');
-                        }
-                    } else {
-                        pendingSync.push({type: 'delete', data: {id}});
-                        showNotification('Task deleted offline. Will sync when online', 'warning');
-                    }
-                    resolve(true);
-                };
-                
-                deleteRequest.onerror = (event) => reject(event.target.error);
-            };
-            
-            getRequest.onerror = (event) => reject(event.target.error);
-        });
-    }
-
-    // ========== Server Sync Functions ========== //
-    async function syncTaskToServer(taskData) {
-    if (!isOnline) {
-        throw new Error('Offline - cannot sync with server');
-    }
-    
-    try {
-        const response = await fetch('tasks.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({
-                action: taskData.id ? 'update' : 'create',
-                task: taskData,
-                userId: <?= $_SESSION['user_id'] ?? 0 ?>
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-            throw new Error(errorData?.message || `Server returned ${response.status}`);
-        }
-
-        const result = await response.json();
+        toast.classList.add(colors[type]);
+        toast.innerHTML = `${icons[type]} ${message}`;
         
-        if (!result.success) {
-            throw new Error(result.message || 'Server returned error');
-        }
-        
-        return result;
-        
-    } catch (error) {
-        console.error('Sync failed:', {
-            error: error.message,
-            taskData: taskData,
-            timestamp: new Date().toISOString()
-        });
-        throw error;
-    }
-}
+        document.body.appendChild(toast);
 
-    async function deleteTaskFromServer(id) {
-        if (!isOnline) {
-            throw new Error('Offline - cannot sync with server');
-        }
+        // Animate in
+        setTimeout(() => {
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            toast.classList.add('translate-x-0', 'opacity-100');
+        }, 100);
         
-        try {
-            const response = await fetch('tasks.php', {
-                method: 'POST',
+        // Animate out and remove
+        setTimeout(() => {
+            toast.classList.remove('translate-x-0', 'opacity-100');
+            toast.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000 + (document.querySelectorAll('[id^="toast-"]').length * 500) );
+    }
+
+    function showSuccessToast(message) { showToast(message, 'success'); }
+    function showErrorToast(message) { showToast(message, 'error'); }
+    function showInfoToast(message) { showToast(message, 'info'); }
+
+
+    // ========== API Wrapper Function ========== //
+    async function apiRequest(action, method = 'POST', data = {}) {
+        let config;
+        if (data instanceof FormData) { 
+            if(!data.has('action')) data.append('action', action); 
+            config = {
+                method: method,
+                body: data,
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            };
+        } else {
+            const payload = { ...data, action: action };
+            config = {
+                method: method,
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest'
                 },
-                body: JSON.stringify({
-                    action: 'delete',
-                    id: id
-                })
-            });
+                body: JSON.stringify(payload)
+            };
+        }
+        
+        try {
+            const response = await fetch(TASKS_API_URL, config);
             
             if (!response.ok) {
-                throw new Error(`Server returned ${response.status}`);
+                let errorMsg = `HTTP error! status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMsg = errorData.message || errorMsg;
+                } catch (e) { 
+                    const textResponse = await response.text();
+                    errorMsg = `HTTP error ${response.status}: ${textResponse || response.statusText}`;
+                }
+                console.error(`API Error (${action}): ${errorMsg}`, { status: response.status, response });
+                throw new Error(errorMsg);
             }
-            
+
             const result = await response.json();
+            
+            if (!result.success) {
+                console.error(`API Action Failed (${action}): ${result.message}`, result);
+                throw new Error(result.message || `API action '${action}' failed.`);
+            }
             return result;
         } catch (error) {
-            console.error('Delete sync to server failed:', error);
-            throw error;
+            console.error('API Request Exception:', action, error);
+            showErrorToast(error.message || 'An unexpected API error occurred.');
+            throw error; 
         }
     }
 
-    async function syncPendingTasks() {
-        if (!isOnline || pendingSync.length === 0) return;
-        
-        showNotification('Syncing offline changes with server...', 'info');
-        
-        const successes = [];
-        const failures = [];
-        
-        for (const operation of pendingSync) {
-            try {
-                if (operation.type === 'add') {
-                    await syncTaskToServer(operation.data);
-                    await updateTask(operation.data.id, {syncStatus: 'synced'});
-                    successes.push(`Added: ${operation.data.title}`);
-                } else if (operation.type === 'update') {
-                    await syncTaskToServer(operation.data);
-                    await updateTask(operation.data.id, {syncStatus: 'synced'});
-                    successes.push(`Updated: ${operation.data.title}`);
-                } else if (operation.type === 'delete') {
-                    await deleteTaskFromServer(operation.data.id);
-                    successes.push(`Deleted: Task ID ${operation.data.id}`);
-                }
-            } catch (error) {
-                failures.push(operation);
-                console.error(`Failed to sync ${operation.type} operation:`, error);
+    // ========== Data Functions using apiRequest ========== //
+    async function addTask(formData) { 
+        return await apiRequest('create_task', 'POST', formData);
+    }
+
+    async function getTask(id) {
+        const result = await apiRequest('get_task_details', 'POST', { id: id });
+        if (result.task) {
+            result.task.related_items = Array.isArray(result.task.related_items) ? result.task.related_items : [];
+            result.task.attachments = Array.isArray(result.task.attachments) ? result.task.attachments : [];
+        }
+        return result.task; 
+    }
+    
+    async function getAllTasks(filters = {}) {
+         const apiFilters = {
+            search: filters.searchTerm || '',
+            status: filters.statusFilter || 'all',
+            priority: filters.priorityFilter || 'all',
+            sortBy: filters.sortBy || 'createdAt-desc'
+        };
+        const result = await apiRequest('list_tasks', 'POST', apiFilters);
+        const today = new Date().toISOString().split('T')[0];
+        (result.tasks || []).forEach(task => {
+            if (task.due_date && task.due_date < today && task.status !== 'completed') {
+                task.is_overdue_display = true; 
+            } else {
+                task.is_overdue_display = false;
             }
-        }
-        
-        // Update pending sync array with only failed operations
-        pendingSync = failures;
-        
-        if (successes.length > 0) {
-            showNotification(`Successfully synced ${successes.length} task(s)`, 'success');
-        }
-        if (failures.length > 0) {
-            showNotification(`Failed to sync ${failures.length} task(s). Will retry later.`, 'error');
-        }
+        });
+        return result.tasks || [];
+    }
+
+    async function updateTask(formData) { 
+        return await apiRequest('update_task', 'POST', formData);
+    }
+
+    async function deleteTask(id) {
+        return await apiRequest('delete_task', 'POST', { id: id });
+    }
+    
+    async function getTaskStats() {
+        return await apiRequest('task_stats', 'POST');
     }
 
     // ========== UI Functions ========== //
     function setupEventListeners() {
-    // Sidebar toggle
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const sidebar = document.getElementById('sidebar');
-    
-    sidebarToggle.addEventListener('click', function() {
-        sidebar.classList.toggle('hidden');
-    });
-    
-    // User menu dropdown
-    const userMenu = document.getElementById('user-menu');
-    const userMenuDropdown = document.getElementById('user-menu-dropdown');
-    
-    userMenu.addEventListener('click', function(e) {
-        e.stopPropagation();
-        userMenuDropdown.classList.toggle('hidden');
-    });
-    
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(event) {
-        if (!userMenu.contains(event.target)) {
-            userMenuDropdown.classList.add('hidden');
-        }
-        if (!document.getElementById('notifications-btn').contains(event.target)) {
-            document.getElementById('notifications-dropdown').classList.add('hidden');
-        }
-    });
-    
-    // Search functionality
-    document.getElementById('search-input').addEventListener('input', function(e) {
-        const searchTerm = e.target.value.toLowerCase();
-        const searchResults = document.getElementById('search-results');
-        
-        if (searchTerm.length > 2) {
-            // In a real app, you would fetch search results from the server
-            // Here we'll simulate it with a timeout
-            setTimeout(() => {
-                const mockResults = [
-                    { id: 1, title: 'Harvest corn in Field 3', type: 'task' },
-                    { id: 2, title: 'Feed livestock in Barn A', type: 'task' },
-                    { id: 3, title: 'Check irrigation system', type: 'task' }
-                ].filter(item => item.title.toLowerCase().includes(searchTerm));
-                
-                if (mockResults.length > 0) {
-                    searchResults.innerHTML = mockResults.map(item => `
-                        <div class="search-item" data-id="${item.id}" data-type="${item.type}">
-                            <div class="font-medium">${item.title}</div>
-                            <div class="text-xs text-gray-500">${item.type}</div>
-                        </div>
-                    `).join('');
-                    searchResults.classList.remove('hidden');
-                } else {
-                    searchResults.innerHTML = '<div class="search-item text-gray-500">No results found</div>';
-                    searchResults.classList.remove('hidden');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebar = document.getElementById('sidebar');
+        if(sidebarToggle && sidebar) sidebarToggle.addEventListener('click', () => sidebar.classList.toggle('hidden'));
+
+        const userMenu = document.getElementById('user-menu');
+        const userMenuDropdown = document.getElementById('user-menu-dropdown');
+        if(userMenu && userMenuDropdown) userMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            userMenuDropdown.classList.toggle('hidden');
+        });
+
+        const notificationsBtn = document.getElementById('notifications-btn');
+        const notificationsDropdown = document.getElementById('notifications-dropdown');
+        if(notificationsBtn && notificationsDropdown) notificationsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            notificationsDropdown.classList.toggle('hidden');
+            if (!notificationsDropdown.classList.contains('hidden')) {
+                document.querySelectorAll('.notification-item.unread').forEach(item => item.classList.remove('unread'));
+                const countEl = document.getElementById('notification-count');
+                if(countEl) {
+                    countEl.classList.add('hidden');
+                    countEl.textContent = '0';
                 }
-            }, 300);
-        } else {
-            searchResults.classList.add('hidden');
-        }
-    });
-    
-    // Close search results when clicking outside
-    document.addEventListener('click', function(event) {
-        if (!document.getElementById('search-input').contains(event.target)) {
-            document.getElementById('search-results').classList.add('hidden');
-        }
-    });
-    
-    // Handle search result selection
-    document.getElementById('search-results').addEventListener('click', function(e) {
-        const item = e.target.closest('.search-item');
-        if (item) {
-            const id = item.getAttribute('data-id');
-            const type = item.getAttribute('data-type');
-            
-            // In a real app, you would handle different types of search results
-            if (type === 'task') {
-                showTaskDetails(parseInt(id));
             }
-            
-            document.getElementById('search-results').classList.add('hidden');
-            document.getElementById('search-input').value = '';
-        }
-    });
-
-    // Add task button
-    document.getElementById('add-task-btn').addEventListener('click', showAddTaskModal);
-    
-    // Save task form
-    document.getElementById('save-task').addEventListener('click', handleSaveTask);
-    
-    // Cancel task form
-    document.getElementById('cancel-task').addEventListener('click', () => {
-        document.getElementById('task-modal').classList.add('hidden');
-    });
-    
-    // Search tasks
-    document.getElementById('search-tasks').addEventListener('input', async (e) => {
-        await loadTasksTable({ searchTerm: e.target.value });
-    });
-    
-    // Status filter
-    document.getElementById('status-filter').addEventListener('change', async (e) => {
-        await loadTasksTable({ status: e.target.value });
-    });
-    
-    // Priority filter
-    document.getElementById('priority-filter').addEventListener('change', async (e) => {
-        await loadTasksTable({ priority: e.target.value });
-    });
-    
-    // Sort by
-    document.getElementById('sort-by').addEventListener('change', async (e) => {
-        await loadTasksTable({ sortBy: e.target.value });
-    });
-    
-    // View toggle
-    document.getElementById('view-toggle').addEventListener('click', toggleView);
-    
-    // Close task details modal
-    document.getElementById('close-details').addEventListener('click', () => {
-        document.getElementById('task-details-modal').classList.add('hidden');
-    });
-    
-    document.getElementById('close-details-btn').addEventListener('click', () => {
-        document.getElementById('task-details-modal').classList.add('hidden');
-    });
-    
-    // Edit task from details
-    document.getElementById('edit-task-from-details').addEventListener('click', async () => {
-        const taskId = document.getElementById('task-details-modal').getAttribute('data-task-id');
-        if (taskId) {
-            document.getElementById('task-details-modal').classList.add('hidden');
-            await showEditTaskModal(parseInt(taskId));
-        }
-    });
-    
-    // Online/offline detection
-    window.addEventListener('online', handleConnectionChange);
-    window.addEventListener('offline', handleConnectionChange);
-    
-    // File upload handling
-    document.getElementById('task-attachments').addEventListener('change', handleFileUpload);
-    document.getElementById('remove-attachments').addEventListener('click', clearFileUpload);
-    
-    // Add related item
-    document.getElementById('add-related-item').addEventListener('click', addRelatedItem);
-}
-
-function toggleView() {
-    const cardView = document.getElementById('card-view');
-    const tableView = document.getElementById('table-view');
-    const viewToggle = document.getElementById('view-toggle');
-    
-    if (cardView.classList.contains('hidden')) {
-        // Switching to card view
-        cardView.classList.remove('hidden');
-        tableView.classList.add('hidden');
-        viewToggle.innerHTML = '<i class="fas fa-list mr-2"></i> Table View';
+        });
         
-        // Re-render cards to ensure they're up to date
-        const currentFilters = {
-            searchTerm: document.getElementById('search-tasks').value,
-            status: document.getElementById('status-filter').value,
-            priority: document.getElementById('priority-filter').value,
-            sortBy: document.getElementById('sort-by').value
-        };
+        document.addEventListener('click', function(event) {
+            if (userMenu && !userMenu.contains(event.target) && userMenuDropdown) {
+                userMenuDropdown.classList.add('hidden');
+            }
+            if (notificationsBtn && !notificationsBtn.contains(event.target) && notificationsDropdown) {
+                notificationsDropdown.classList.add('hidden');
+            }
+            const searchInputGlobal = document.getElementById('search-input');
+            const searchResultsGlobal = document.getElementById('search-results');
+            if (searchInputGlobal && !searchInputGlobal.contains(event.target) && searchResultsGlobal) {
+               searchResultsGlobal.classList.add('hidden');
+            }
+        });
+
+        const searchInputGlobal = document.getElementById('search-input');
+        if(searchInputGlobal) searchInputGlobal.addEventListener('input', async e => {
+            const searchTerm = e.target.value.trim();
+            const searchResultsEl = document.getElementById('search-results');
+            if (searchTerm.length > 2) {
+                try {
+                    const results = await apiRequest('search_tasks', 'POST', { query: searchTerm });
+                    if (results.tasks && results.tasks.length > 0) {
+                        searchResultsEl.innerHTML = results.tasks.map(task => `
+                            <div class="search-item" data-id="${task.id}" data-type="task">
+                                <div class="font-medium">${task.title}</div>
+                                <div class="text-xs text-gray-500">Task</div>
+                            </div>
+                        `).join('');
+                        searchResultsEl.classList.remove('hidden');
+                    } else {
+                        searchResultsEl.innerHTML = '<div class="search-item text-gray-500">No tasks found</div>';
+                        searchResultsEl.classList.remove('hidden');
+                    }
+                } catch (error) {
+                    searchResultsEl.innerHTML = '<div class="search-item text-red-500">Search error</div>';
+                    searchResultsEl.classList.remove('hidden');
+                }
+            } else {
+                if(searchResultsEl) searchResultsEl.classList.add('hidden');
+            }
+        });
+
+        const searchResultsEl = document.getElementById('search-results');
+        if(searchResultsEl) searchResultsEl.addEventListener('click', e => {
+            const item = e.target.closest('.search-item');
+            if (item && item.dataset.type === 'task') {
+                showTaskDetails(parseInt(item.dataset.id));
+                searchResultsEl.classList.add('hidden');
+                const searchInputGlobal = document.getElementById('search-input');
+                if(searchInputGlobal) searchInputGlobal.value = '';
+            }
+        });
+
+        document.getElementById('add-task-btn')?.addEventListener('click', showAddTaskModal);
+        document.getElementById('save-task')?.addEventListener('click', handleSaveTask);
+        document.getElementById('cancel-task')?.addEventListener('click', () => document.getElementById('task-modal')?.classList.add('hidden'));
         
-        getAllTasks(currentFilters)
-            .then(tasks => renderTasksCards(tasks))
-            .catch(error => console.error('Error loading tasks for card view:', error));
-    } else {
-        // Switching to table view
-        cardView.classList.add('hidden');
-        tableView.classList.remove('hidden');
-        viewToggle.innerHTML = '<i class="fas fa-table mr-2"></i> Card View';
+        document.getElementById('search-tasks')?.addEventListener('input', async e => await loadTasksTable({ searchTerm: e.target.value }));
+        document.getElementById('status-filter')?.addEventListener('change', async e => await loadTasksTable({ status: e.target.value }));
+        document.getElementById('priority-filter')?.addEventListener('change', async e => await loadTasksTable({ priority: e.target.value }));
+        document.getElementById('sort-by')?.addEventListener('change', async e => await loadTasksTable({ sortBy: e.target.value }));
+        
+        document.getElementById('view-toggle')?.addEventListener('click', toggleView);
+        
+        document.getElementById('close-details')?.addEventListener('click', () => document.getElementById('task-details-modal')?.classList.add('hidden'));
+        document.getElementById('close-details-btn')?.addEventListener('click', () => document.getElementById('task-details-modal')?.classList.add('hidden'));
+        
+        document.getElementById('edit-task-from-details')?.addEventListener('click', async () => {
+            const taskDetailsModal = document.getElementById('task-details-modal');
+            const taskId = taskDetailsModal?.getAttribute('data-task-id');
+            if (taskId) {
+                taskDetailsModal.classList.add('hidden');
+                await showEditTaskModal(parseInt(taskId));
+            }
+        });
+        
+        window.addEventListener('online', handleConnectionChange);
+        window.addEventListener('offline', handleConnectionChange);
+        
+        document.getElementById('task-attachments')?.addEventListener('change', handleFileUpload);
+        document.getElementById('remove-attachments')?.addEventListener('click', clearFileUpload);
+        
+        // Related Items Event Listeners in Modal
+        document.getElementById('btn-add-related-item-to-task')?.addEventListener('click', handleAddRelatedItemToList);
+        document.getElementById('current-related-items-list')?.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-related-item-btn') || e.target.closest('.remove-related-item-btn')) {
+                const button = e.target.closest('.remove-related-item-btn');
+                const indexToRemove = parseInt(button.dataset.itemIndex);
+                if (!isNaN(indexToRemove) && indexToRemove >= 0 && indexToRemove < currentTaskRelatedItems.length) {
+                    currentTaskRelatedItems.splice(indexToRemove, 1);
+                    displayCurrentRelatedItems();
+                }
+            }
+        });
+        document.getElementById('existing-attachments-list')?.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-existing-attachment-btn') || e.target.closest('.remove-existing-attachment-btn')) {
+                const button = e.target.closest('.remove-existing-attachment-btn');
+                const attachmentId = parseInt(button.dataset.attachmentId);
+                if (!attachmentsToDelete.includes(attachmentId)) {
+                    attachmentsToDelete.push(attachmentId);
+                }
+                button.parentElement.style.textDecoration = 'line-through';
+                button.parentElement.style.opacity = '0.5';
+                button.disabled = true;
+            }
+        });
     }
-}
+
+    function toggleView() {
+        const cardView = document.getElementById('card-view');
+        const tableView = document.getElementById('table-view');
+        const viewToggle = document.getElementById('view-toggle');
+        
+        if (!cardView || !tableView || !viewToggle) return;
+
+        if (cardView.classList.contains('hidden')) {
+            cardView.classList.remove('hidden');
+            tableView.classList.add('hidden');
+            viewToggle.innerHTML = '<i class="fas fa-list mr-2"></i> Table View';
+        } else {
+            cardView.classList.add('hidden');
+            tableView.classList.remove('hidden');
+            viewToggle.innerHTML = '<i class="fas fa-table mr-2"></i> Card View';
+        }
+    }
 
     async function loadTasksTable(filters = {}) {
+        const tableBody = document.getElementById('tasks-table-body');
+        const cardView = document.getElementById('card-view');
+        
+        if(tableBody) tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i> Loading tasks...</td></tr>`;
+        if(cardView) cardView.innerHTML = `<div class="sm:col-span-2 lg:col-span-3 text-center py-10"><i class="fas fa-spinner fa-spin text-gray-400 text-2xl"></i><p class="mt-2 text-sm text-gray-500">Loading tasks...</p></div>`;
+
         try {
-            const tasks = await getAllTasks(filters);
-            updateSummaryCards(tasks);
-            renderTasksTable(tasks);
-            renderTasksCards(tasks); // Ensure this is called
+            const effectiveFilters = {
+                searchTerm: document.getElementById('search-tasks')?.value || filters.searchTerm,
+                statusFilter: document.getElementById('status-filter')?.value || filters.status,
+                priorityFilter: document.getElementById('priority-filter')?.value || filters.priority,
+                sortBy: document.getElementById('sort-by')?.value || filters.sortBy,
+            };
+
+            const [tasks, statsResult] = await Promise.all([
+                getAllTasks(effectiveFilters),
+                getTaskStats()
+            ]);
             
-            if (tasks && tasks.length > 0) {
-                updateStatusChart(tasks);
-            } else {
-                updateStatusChart([]);
-            }
+            const stats = statsResult.stats || {};
+
+            updateSummaryCardsWithStats(stats);
+            renderTasksTable(tasks);
+            renderTasksCards(tasks);
+            updateStatusChartWithStats(stats);
+
         } catch (error) {
-            console.error('Error loading tasks:', error);
-            showAlert('Failed to load tasks. ' + error.message, 'error');
-            updateStatusChart([]);
+            if(tableBody) tableBody.innerHTML = `<tr><td colspan="6" class="px-6 py-4 text-center text-red-500">Error loading tasks.</td></tr>`;
+            if(cardView) cardView.innerHTML = `<div class="sm:col-span-2 lg:col-span-3 text-center py-10 text-red-500">Error loading tasks.</div>`;
+            updateStatusChartWithStats({});
         }
     }
+    
+    function isActuallyOverdue(dueDateStr) { 
+        if (!dueDateStr) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); 
+        return new Date(dueDateStr) < today;
+    }
 
-    function updateSummaryCards(tasks) {
-        if (!tasks) return;
-        
-        const totalTasks = tasks.length;
-        const pendingCount = tasks.filter(t => t.status === 'pending').length;
-        const inProgressCount = tasks.filter(t => t.status === 'in-progress').length;
-        const overdueCount = tasks.filter(t => t.status === 'overdue').length;
-        const completedCount = tasks.filter(t => t.status === 'completed').length;
-        
-        document.getElementById('total-tasks-count').textContent = totalTasks;
-        document.getElementById('pending-count').textContent = pendingCount;
-        document.getElementById('in-progress-count').textContent = inProgressCount;
-        document.getElementById('overdue-count').textContent = overdueCount;
+
+    function updateSummaryCardsWithStats(stats = {}) {
+        document.getElementById('total-tasks-count').textContent = stats.total_tasks || 0;
+        document.getElementById('pending-count').textContent = stats.pending_tasks || 0;
+        document.getElementById('in-progress-count').textContent = stats.in_progress_tasks || 0;
+        document.getElementById('overdue-count').textContent = stats.overdue_tasks || 0;
     }
 
     function renderTasksTable(tasks) {
         const tableBody = document.getElementById('tasks-table-body');
+        if (!tableBody) return;
         
         if (!tasks || tasks.length === 0) {
             tableBody.innerHTML = `
@@ -1657,21 +1325,21 @@ function toggleView() {
             return;
         }
         
-        tableBody.innerHTML = tasks.map(task => `
+        tableBody.innerHTML = tasks.map(task => {
+            const displayStatus = task.is_overdue_display && task.status !== 'completed' ? 'overdue' : task.status;
+            return `
             <tr class="hover:bg-gray-50" data-id="${task.id}">
                 <td class="px-6 py-4">
                     <div class="font-medium text-gray-900 flex items-center">
                         ${task.title}
-                        ${task.syncStatus === 'pending' ? 
-                            '<span class="ml-2 text-xs text-yellow-600" title="Pending sync"><i class="fas fa-cloud-upload-alt"></i></span>' : ''}
                     </div>
                     <div class="text-sm text-gray-500 truncate max-w-xs">${task.description || ''}</div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">${task.assignedTo || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${task.assigned_to || '-'}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <div>${formatDate(task.dueDate)}</div>
-                    ${isOverdue(task.dueDate, task.status) ? 
-                        `<div class="text-xs text-red-500">${daysOverdue(task.dueDate)} days overdue</div>` : ''}
+                    <div>${formatDate(task.due_date)}</div>
+                    ${task.is_overdue_display && task.status !== 'completed' ? 
+                        `<div class="text-xs text-red-500">${daysOverdue(task.due_date)} days overdue</div>` : ''}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full priority-${task.priority}">
@@ -1679,8 +1347,8 @@ function toggleView() {
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full status-${task.status}">
-                        ${capitalizeFirstLetter(task.status.replace('-', ' '))}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full status-${displayStatus}">
+                        ${capitalizeFirstLetter(displayStatus.replace('-', ' '))}
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -1695,730 +1363,597 @@ function toggleView() {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
         
-        // Add event listeners to all view buttons
-        document.querySelectorAll('.view-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const row = e.target.closest('tr');
-                const id = parseInt(row.getAttribute('data-id'));
-                await showTaskDetails(id);
-            });
-        });
-        
-        // Add event listeners to all edit buttons
-        document.querySelectorAll('.edit-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const row = e.target.closest('tr');
-                const id = parseInt(row.getAttribute('data-id'));
-                await showEditTaskModal(id);
-            });
-        });
-        
-        // Add event listeners to all delete buttons
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const row = e.target.closest('tr');
-                const id = parseInt(row.getAttribute('data-id'));
-                await handleDeleteTask(id);
-            });
-        });
+        tableBody.querySelectorAll('.view-btn').forEach(btn => btn.addEventListener('click', async e => await showTaskDetails(parseInt(e.currentTarget.closest('tr').dataset.id))));
+        tableBody.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', async e => await showEditTaskModal(parseInt(e.currentTarget.closest('tr').dataset.id))));
+        tableBody.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', async e => await handleDeleteTask(parseInt(e.currentTarget.closest('tr').dataset.id))));
     }
 
     function renderTasksCards(tasks) {
-    const cardView = document.getElementById('card-view');
-    
-    if (!tasks || tasks.length === 0) {
-        cardView.innerHTML = `
-            <div class="sm:col-span-2 lg:col-span-3 text-center py-10">
-                <i class="fas fa-tasks text-4xl text-gray-300 mb-3"></i>
-                <p class="text-gray-500">No tasks found. Click "Add New Task" to get started.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    cardView.innerHTML = tasks.map(task => `
-        <div class="task-card bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:border-blue-300">
-            <div class="p-4">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h3 class="font-bold text-lg text-gray-800 mb-1">${task.title}</h3>
-                        <p class="text-sm text-gray-600 mb-2">${task.description || 'No description'}</p>
-                    </div>
-                    ${task.syncStatus === 'pending' ? 
-                        '<span class="text-yellow-500 text-xs" title="Pending sync"><i class="fas fa-cloud-upload-alt"></i></span>' : ''}
-                </div>
-                
-                <div class="flex items-center text-sm text-gray-500 mb-2">
-                    <i class="fas fa-user mr-1"></i>
-                    <span>${task.assignedTo || 'Unassigned'}</span>
-                </div>
-                
-                <div class="flex items-center text-sm ${isOverdue(task.dueDate, task.status) ? 'text-red-500' : 'text-gray-500'} mb-3">
-                    <i class="fas fa-calendar-day mr-1"></i>
-                    <span>${formatDate(task.dueDate) || 'No due date'}</span>
-                    ${isOverdue(task.dueDate, task.status) ? 
-                        `<span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">${daysOverdue(task.dueDate)} days overdue</span>` : ''}
-                </div>
-                
-                <div class="flex justify-between items-center">
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full status-${task.status}">
-                        ${capitalizeFirstLetter(task.status.replace('-', ' '))}
-                    </span>
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full priority-${task.priority}">
-                        ${capitalizeFirstLetter(task.priority)}
-                    </span>
-                </div>
-            </div>
-            
-            <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-2 border-t border-gray-200">
-                <button class="view-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="View details">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="edit-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="Edit">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="delete-btn text-red-600 hover:text-red-800 p-1" data-id="${task.id}" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
-    
-    // Add event listeners to card buttons
-    cardView.querySelectorAll('.view-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = parseInt(e.currentTarget.getAttribute('data-id'));
-            await showTaskDetails(id);
-        });
-    });
-    
-    cardView.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = parseInt(e.currentTarget.getAttribute('data-id'));
-            await showEditTaskModal(id);
-        });
-    });
-    
-    cardView.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = parseInt(e.currentTarget.getAttribute('data-id'));
-            await handleDeleteTask(id);
-        });
-    });
-}
+        const cardView = document.getElementById('card-view');
+        if (!cardView) return;
 
-    function updateStatusChart(tasks) {
-    if (!tasks || tasks.length === 0) {
-        // If no tasks, clear the chart if it exists
+        if (!tasks || tasks.length === 0) {
+            cardView.innerHTML = `<div class="sm:col-span-2 lg:col-span-3 text-center py-10"><i class="fas fa-tasks text-4xl text-gray-300 mb-3"></i><p class="text-gray-500">No tasks found.</p></div>`;
+            return;
+        }
+    
+        cardView.innerHTML = tasks.map(task => {
+            const displayStatus = task.is_overdue_display && task.status !== 'completed' ? 'overdue' : task.status;
+            return `
+            <div class="task-card bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 hover:border-blue-300">
+                <div class="p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-bold text-lg text-gray-800 mb-1">${task.title}</h3>
+                            <p class="text-sm text-gray-600 mb-2">${task.description || 'No description'}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-sm text-gray-500 mb-2">
+                        <i class="fas fa-user mr-1"></i>
+                        <span>${task.assigned_to || 'Unassigned'}</span>
+                    </div>
+                    <div class="flex items-center text-sm ${task.is_overdue_display && task.status !== 'completed' ? 'text-red-500' : 'text-gray-500'} mb-3">
+                        <i class="fas fa-calendar-day mr-1"></i>
+                        <span>${formatDate(task.due_date) || 'No due date'}</span>
+                        ${task.is_overdue_display && task.status !== 'completed' ? 
+                            `<span class="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">${daysOverdue(task.due_date)} days overdue</span>` : ''}
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full status-${displayStatus}">
+                            ${capitalizeFirstLetter(displayStatus.replace('-', ' '))}
+                        </span>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full priority-${task.priority}">
+                            ${capitalizeFirstLetter(task.priority)}
+                        </span>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 flex justify-end space-x-2 border-t border-gray-200">
+                    <button class="view-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="View details"><i class="fas fa-eye"></i></button>
+                    <button class="edit-btn text-blue-600 hover:text-blue-800 p-1" data-id="${task.id}" title="Edit"><i class="fas fa-edit"></i></button>
+                    <button class="delete-btn text-red-600 hover:text-red-800 p-1" data-id="${task.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        `}).join('');
+    
+        cardView.querySelectorAll('.view-btn').forEach(btn => btn.addEventListener('click', async e => await showTaskDetails(parseInt(e.currentTarget.dataset.id))));
+        cardView.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', async e => await showEditTaskModal(parseInt(e.currentTarget.dataset.id))));
+        cardView.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', async e => await handleDeleteTask(parseInt(e.currentTarget.dataset.id))));
+    }
+
+    function updateStatusChartWithStats(stats = {}) {
+        const canvas = document.getElementById('statusChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
         if (window.statusChart && typeof window.statusChart.destroy === 'function') {
             window.statusChart.destroy();
-            window.statusChart = null;
         }
-        return;
-    }
-    
-    const ctx = document.getElementById('statusChart').getContext('2d');
-    
-    // Count tasks by status
-    const statusCounts = {
-        pending: 0,
-        'in-progress': 0,
-        completed: 0,
-        overdue: 0
-    };
-    
-    tasks.forEach(task => {
-        statusCounts[task.status] = (statusCounts[task.status] || 0) + 1;
-    });
-    
-    // Destroy previous chart if it exists
-    if (window.statusChart && typeof window.statusChart.destroy === 'function') {
-        window.statusChart.destroy();
-    }
-    
-    // Create new chart
-    window.statusChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Pending', 'In Progress', 'Completed', 'Overdue'],
-            datasets: [{
-                data: [
-                    statusCounts.pending,
-                    statusCounts['in-progress'],
-                    statusCounts.completed,
-                    statusCounts.overdue
-                ],
-                backgroundColor: [
-                    '#F59E0B',
-                    '#3B82F6',
-                    '#10B981',
-                    '#EF4444'
-                ],
-                hoverBackgroundColor: [
-                    '#D97706',
-                    '#2563EB',
-                    '#059669',
-                    '#DC2626'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.raw || 0;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = Math.round((value / total) * 100);
-                            return `${label}: ${value} (${percentage}%)`;
+        
+        const parent = canvas.parentNode;
+        const existingNoDataMsg = parent.querySelector('.no-data-message');
+        if (existingNoDataMsg) existingNoDataMsg.remove();
+        canvas.style.display = 'block';
+
+        if (Object.keys(stats).length === 0 || !stats.total_tasks || stats.total_tasks === 0) {
+             window.statusChart = null; 
+             canvas.style.display = 'none';
+             const noDataMsg = document.createElement('p');
+             noDataMsg.className = 'text-center text-gray-500 py-10 no-data-message';
+             noDataMsg.textContent = 'No task data to display chart.';
+             parent.appendChild(noDataMsg);
+            return;
+        }
+        
+        window.statusChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'In Progress', 'Completed', 'Overdue'],
+                datasets: [{
+                    data: [
+                        stats.pending_tasks || 0,
+                        stats.in_progress_tasks || 0,
+                        stats.completed_tasks || 0, 
+                        stats.overdue_tasks || 0
+                    ],
+                    backgroundColor: ['#F59E0B', '#3B82F6', '#10B981', '#EF4444'],
+                    hoverBackgroundColor: ['#D97706', '#2563EB', '#059669', '#DC2626'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
                         }
                     }
                 }
             }
-        }
-    });
-}
+        });
+    }
 
     function showAddTaskModal() {
         document.getElementById('modal-title').textContent = 'Add New Task';
         document.getElementById('task-id').value = '';
         document.getElementById('task-form').reset();
-        document.getElementById('related-items-container').innerHTML = '';
-        document.getElementById('file-upload-area').classList.remove('hidden');
-        document.getElementById('file-preview').classList.add('hidden');
+        currentTaskRelatedItems = []; 
+        displayCurrentRelatedItems();
+        attachmentsToDelete = []; 
+        clearExistingAttachmentsDisplay();
+        clearFileUploadDisplayOnly(); 
         document.getElementById('task-modal').classList.remove('hidden');
     }
 
     async function showEditTaskModal(id) {
         try {
             const task = await getTask(id);
-            if (!task) {
-                throw new Error('Task not found');
-            }
+            if (!task) throw new Error('Task not found for editing.');
             
             document.getElementById('modal-title').textContent = 'Edit Task';
             document.getElementById('task-id').value = task.id;
             document.getElementById('task-title').value = task.title || '';
             document.getElementById('task-description').value = task.description || '';
-            document.getElementById('task-assigned-to').value = task.assignedTo || '';
-            document.getElementById('task-due-date').value = task.dueDate || '';
-            document.getElementById('task-status').value = task.status === 'overdue' ? 'pending' : task.status || 'pending';
+            document.getElementById('task-assigned-to').value = task.assigned_to || '';
+            document.getElementById('task-due-date').value = task.due_date || '';
+            document.getElementById('task-status').value = task.status || 'pending'; 
             document.getElementById('task-priority').value = task.priority || 'medium';
             
-            // Clear and re-add related items
-            const relatedItemsContainer = document.getElementById('related-items-container');
-            relatedItemsContainer.innerHTML = '';
-            if (task.relatedItems && task.relatedItems.length > 0) {
-                task.relatedItems.forEach(item => {
-                    addRelatedItem(item.type, item.id, item.name);
-                });
-            }
-            
-            // Handle attachments preview
-            const fileUploadArea = document.getElementById('file-upload-area');
-            const filePreview = document.getElementById('file-preview');
-            const previewList = document.getElementById('attachment-preview-list');
-            
-            previewList.innerHTML = '';
-            
-            if (task.attachments && task.attachments.length > 0) {
-                task.attachments.forEach(attachment => {
-                    const previewItem = document.createElement('div');
-                    previewItem.className = 'flex items-center justify-between p-2 bg-gray-100 rounded';
-                    previewItem.innerHTML = `
-                        <div class="flex items-center">
-                            <i class="fas fa-file-${attachment.type === 'pdf' ? 'pdf' : 'image'} text-${attachment.type === 'pdf' ? 'red' : 'blue'}-500 mr-2"></i>
-                            <span class="text-sm truncate max-w-xs">${attachment.name}</span>
-                        </div>
-                        <a href="${attachment.url}" target="_blank" class="text-blue-500 hover:text-blue-700 ml-2">
-                            <i class="fas fa-external-link-alt"></i>
-                        </a>
-                    `;
-                    previewList.appendChild(previewItem);
-                });
-                
-                fileUploadArea.classList.add('hidden');
-                filePreview.classList.remove('hidden');
-            } else {
-                fileUploadArea.classList.remove('hidden');
-                filePreview.classList.add('hidden');
-            }
-            
+            currentTaskRelatedItems = task.related_items || [];
+            displayCurrentRelatedItems();
+            attachmentsToDelete = []; 
+            displayExistingAttachments(task.attachments || []);
+            clearFileUploadDisplayOnly(); 
+
             document.getElementById('task-modal').classList.remove('hidden');
         } catch (error) {
-            console.error('Error showing edit modal:', error);
-            showAlert('Failed to load task data for editing. ' + error.message, 'error');
+            showErrorToast('Failed to load task for editing: ' + error.message);
         }
     }
 
     async function showTaskDetails(id) {
         try {
-            const task = await getTask(id);
-            if (!task) {
-                throw new Error('Task not found');
-            }
+            const task = await getTask(id); 
+            if (!task) throw new Error('Task details not found.');
             
-            // Set basic info
+            const displayStatus = task.is_overdue_display && task.status !== 'completed' ? 'overdue' : task.status;
+
             document.getElementById('task-details-title-text').textContent = task.title || '-';
             document.getElementById('task-details-description').textContent = task.description || 'No description available';
-            document.getElementById('task-details-assigned-to').textContent = task.assignedTo || '-';
-            document.getElementById('task-details-due-date').textContent = formatDate(task.dueDate) || '-';
+            document.getElementById('task-details-assigned-to').textContent = task.assigned_to || '-';
+            document.getElementById('task-details-due-date').textContent = formatDate(task.due_date) || '-';
             
-            // Set status and priority badges
             const statusBadge = document.getElementById('task-details-status');
-            statusBadge.textContent = capitalizeFirstLetter(task.status.replace('-', ' ')) || '-';
-            statusBadge.className = 'mt-1 text-sm font-medium px-2 py-1 rounded-full inline-block status-' + task.status;
+            statusBadge.textContent = capitalizeFirstLetter(displayStatus.replace('-', ' ')) || '-';
+            statusBadge.className = `mt-1 text-sm font-medium px-2 py-1 rounded-full inline-block status-${displayStatus}`;
             
             const priorityBadge = document.getElementById('task-details-priority');
             priorityBadge.textContent = capitalizeFirstLetter(task.priority) || '-';
-            priorityBadge.className = 'mt-1 text-sm font-medium px-2 py-1 rounded-full inline-block priority-' + task.priority;
+            priorityBadge.className = `mt-1 text-sm font-medium px-2 py-1 rounded-full inline-block priority-${task.priority}`;
             
-            // Set timeline dates
-            document.getElementById('task-details-created-date').textContent = 
-                formatDateTime(task.createdAt) || '-';
-            document.getElementById('task-details-updated-date').textContent = 
-                formatDateTime(task.updatedAt) || '-';
+            document.getElementById('task-details-created-date').textContent = formatDateTime(task.created_at) || '-'; 
+            document.getElementById('task-details-updated-date').textContent = formatDateTime(task.updated_at) || '-'; 
             
-            // Set status history
-            const statusHistory = document.getElementById('task-details-status-history');
-            if (task.statusHistory && task.statusHistory.length > 0) {
-                statusHistory.innerHTML = task.statusHistory.map(entry => `
-                    <div class="mb-1">
-                        <span class="font-medium">${capitalizeFirstLetter(entry.status.replace('-', ' '))}</span> 
-                        on ${formatDateTime(entry.date)}
-                    </div>
-                `).join('');
-            } else {
-                statusHistory.textContent = 'No status history available';
-            }
-            
-            // Set related items
-            const relatedItemsContainer = document.getElementById('task-details-related-items');
-            relatedItemsContainer.innerHTML = '';
-            
-            if (task.relatedItems && task.relatedItems.length > 0) {
-                task.relatedItems.forEach(item => {
-                    const itemElement = document.createElement('span');
-                    itemElement.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800';
-                    itemElement.innerHTML = `
-                        <i class="fas fa-${getRelatedItemIcon(item.type)} mr-1"></i>
-                        ${item.name}
-                    `;
-                    relatedItemsContainer.appendChild(itemElement);
+            document.getElementById('task-details-status-history').textContent = 'Activity log below shows changes.';
+
+            const relatedItemsViewContainer = document.getElementById('task-details-related-items');
+            relatedItemsViewContainer.innerHTML = ''; 
+            if (task.related_items && task.related_items.length > 0) {
+                task.related_items.forEach(item => {
+                    const el = document.createElement('span');
+                    el.className = 'inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800 mr-2 mb-2';
+                    el.textContent = `${capitalizeFirstLetter(item.related_item_type)}: ID ${item.related_item_id}`;
+                    relatedItemsViewContainer.appendChild(el);
                 });
             } else {
-                relatedItemsContainer.innerHTML = '<p class="text-sm text-gray-500">No related items</p>';
+                relatedItemsViewContainer.innerHTML = '<p class="text-sm text-gray-500">No related items.</p>';
             }
-            
-            // Set attachments
-            const attachmentsContainer = document.getElementById('task-details-attachments');
-            attachmentsContainer.innerHTML = '';
-            
+
+            const attachmentsViewContainer = document.getElementById('task-details-attachments');
+            attachmentsViewContainer.innerHTML = ''; 
             if (task.attachments && task.attachments.length > 0) {
                 task.attachments.forEach(attachment => {
-                    const attachmentElement = document.createElement('div');
-                    attachmentElement.className = 'flex items-center justify-between p-2 border border-gray-200 rounded';
-                    attachmentElement.innerHTML = `
-                        <div class="flex items-center">
-                            <i class="fas fa-file-${attachment.type === 'pdf' ? 'pdf' : 'image'} text-${attachment.type === 'pdf' ? 'red' : 'blue'}-500 mr-2"></i>
-                            <span class="text-sm">${attachment.name}</span>
-                        </div>
-                        <a href="${attachment.url}" target="_blank" class="text-blue-500 hover:text-blue-700 ml-4">
-                            <i class="fas fa-download"></i>
-                        </a>
-                    `;
-                    attachmentsContainer.appendChild(attachmentElement);
+                    const link = document.createElement('a');
+                    link.href = attachment.file_path; 
+                    link.textContent = attachment.file_name;
+                    link.target = "_blank";
+                    link.className = "block text-blue-600 hover:underline";
+                    
+                    const icon = document.createElement('i');
+                    icon.className = `fas fa-file-${getFileIconClass(attachment.file_type)} mr-2`;
+                    link.prepend(icon);
+
+                    attachmentsViewContainer.appendChild(link);
                 });
             } else {
-                attachmentsContainer.innerHTML = '<p class="text-sm text-gray-500">No attachments</p>';
+                attachmentsViewContainer.innerHTML = '<p class="text-sm text-gray-500">No attachments.</p>';
             }
             
-            // Load activities
-            loadTaskActivities(id);
+            renderActivities(task.activities || []);
             
-            // Set task ID on modal for edit button
             document.getElementById('task-details-modal').setAttribute('data-task-id', id);
-            
-            // Show modal
             document.getElementById('task-details-modal').classList.remove('hidden');
         } catch (error) {
-            console.error('Error showing task details:', error);
-            showAlert('Failed to load task details. ' + error.message, 'error');
+            showErrorToast('Failed to load task details: ' + error.message);
         }
     }
 
+    function getFileIconClass(mimeType) {
+        if (mimeType && mimeType.includes('pdf')) return 'pdf text-red-500';
+        if (mimeType && mimeType.startsWith('image/')) return 'image text-blue-500';
+        if (mimeType && mimeType.includes('word')) return 'word text-blue-700';
+        if (mimeType && (mimeType.includes('excel') || mimeType.includes('spreadsheet'))) return 'excel text-green-700';
+        return 'alt text-gray-500'; 
+    }
+
+
     async function loadTaskActivities(taskId) {
         const activitiesContainer = document.getElementById('task-activities');
-        activitiesContainer.innerHTML = `
-            <div class="text-center py-4 text-sm text-gray-500 flex justify-center items-start">
-                <i class="fas fa-spinner fa-spin mr-2"></i> Loading activities...
-            </div>
-        `;
-        
-        try {
-            // Simulate loading activities (in a real app, this would come from the server)
-            setTimeout(() => {
-                const activities = [
-                    {
-                        id: 1,
-                        type: 'status',
-                        user: 'John Doe',
-                        action: 'changed status to "In Progress"',
-                        timestamp: new Date(Date.now() - 3600000),
-                        avatar: 'JD'
-                    },
-                    {
-                        id: 2,
-                        type: 'comment',
-                        user: 'Sarah Johnson',
-                        action: 'added a comment: "I\'ll start working on this tomorrow morning"',
-                        timestamp: new Date(Date.now() - 86400000),
-                        avatar: 'SJ'
-                    },
-                    {
-                        id: 3,
-                        type: 'create',
-                        user: 'System',
-                        action: 'created this task',
-                        timestamp: new Date(Date.now() - 172800000),
-                        avatar: 'AV'
-                    }
-                ];
-                
-                renderActivities(activities);
-            }, 800);
-        } catch (error) {
-            console.error('Error loading activities:', error);
-            activitiesContainer.innerHTML = `
-                <div class="text-center py-4 text-sm text-red-500">
-                    Failed to load activities. Please try again later.
-                </div>
-            `;
-        }
+        if(activitiesContainer) activitiesContainer.innerHTML = `<div class="text-center py-4 text-sm text-gray-500">Activities loaded with task details.</div>`;
     }
 
     function renderActivities(activities) {
         const activitiesContainer = document.getElementById('task-activities');
+        if (!activitiesContainer) return;
         
         if (!activities || activities.length === 0) {
-            activitiesContainer.innerHTML = `
-                <div class="text-center py-4 text-sm text-gray-500">
-                    No activities found for this task.
-                </div>
-            `;
+            activitiesContainer.innerHTML = `<div class="text-center py-4 text-sm text-gray-500">No activities found for this task.</div>`;
             return;
         }
         
-        activitiesContainer.innerHTML = activities.map(activity => `
+        activitiesContainer.innerHTML = activities.map(activity => {
+            const userDisplay = activity.user_full_name || (activity.user_id ? `User #${activity.user_id}` : 'System');
+            const avatarInitials = userDisplay.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+
+            return `
             <div class="activity-item p-4 border-b border-gray-200 last:border-0">
                 <div class="flex items-start">
                     <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
-                        ${activity.avatar}
+                        ${avatarInitials}
                     </div>
                     <div class="ml-3 flex-1">
                         <div class="flex items-center justify-between">
-                            <p class="text-sm font-medium text-gray-900">${activity.user}</p>
+                            <p class="text-sm font-medium text-gray-900">${userDisplay}</p>
                             <p class="text-xs text-gray-500">${formatDateTime(activity.timestamp)}</p>
                         </div>
                         <p class="text-sm text-gray-700">
-                            ${activity.action}
+                            ${activity.activity_notes || 'No details'} 
                         </p>
-                        ${activity.type === 'comment' ? `
-                            <div class="mt-2 text-xs text-gray-500 italic">
-                                <i class="fas fa-comment-alt mr-1"></i> Comment
-                            </div>
-                        ` : ''}
+                        <div class="mt-1 text-xs text-gray-500 italic">
+                            Type: ${activity.activity_type || 'General'}
+                        </div>
                     </div>
                 </div>
             </div>
-        `).join('');
+        `}).join('');
     }
 
     async function handleSaveTask() {
-    const id = document.getElementById('task-id').value;
-    const formData = {
-        title: document.getElementById('task-title').value,
-        description: document.getElementById('task-description').value,
-        assignedTo: document.getElementById('task-assigned-to').value,
-        dueDate: document.getElementById('task-due-date').value,
-        status: document.getElementById('task-status').value,
-        priority: document.getElementById('task-priority').value,
-        updatedAt: new Date(),
-        createdAt: id ? undefined : new Date() // Only set for new tasks
-    };
-    
-    if (!formData.title) {
-        showAlert('Task title is required', 'error');
-        return;
-    }
-    
-    try {
-        // Show loading state
-        const saveBtn = document.getElementById('save-task');
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
+        const idInput = document.getElementById('task-id');
+        const id = idInput ? idInput.value : null;
         
+        const taskData = { // This will be converted to FormData
+            title: document.getElementById('task-title')?.value,
+            description: document.getElementById('task-description')?.value,
+            assignedTo: document.getElementById('task-assigned-to')?.value, 
+            dueDate: document.getElementById('task-due-date')?.value,
+            status: document.getElementById('task-status')?.value,
+            priority: document.getElementById('task-priority')?.value,
+            related_items: currentTaskRelatedItems 
+        };
+    
         if (id) {
-            // For existing tasks
-            const existingTask = await getTask(parseInt(id));
-            if (!existingTask) {
-                throw new Error('Task not found');
-            }
-            
-            // Preserve created date for existing tasks
-            formData.createdAt = existingTask.createdAt;
-            
-            // Add status history if status changed
-            if (existingTask.status !== formData.status) {
-                formData.statusHistory = existingTask.statusHistory || [];
-                formData.statusHistory.push({
-                    status: formData.status,
-                    date: new Date(),
-                    changedBy: 'Current User' // Replace with actual user
-                });
-            }
-            
-            await updateTask(parseInt(id), formData);
-            showAlert('Task updated successfully!', 'success');
-        } else {
-            // For new tasks
-            formData.statusHistory = [{
-                status: formData.status,
-                date: new Date(),
-                changedBy: 'Current User' // Replace with actual user
-            }];
-            
-            await addTask(formData);
-            showAlert('Task added successfully!', 'success');
+            taskData.id = parseInt(id);
+        }
+
+        if (!taskData.title) {
+            showErrorToast('Task title is required');
+            return;
+        }
+    
+        const saveBtn = document.getElementById('save-task');
+        if(saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Saving...';
         }
         
-        // Close modal and refresh data
-        document.getElementById('task-modal').classList.add('hidden');
-        await loadTasksTable();
+        const formData = new FormData();
+        formData.append('action', id ? 'update_task' : 'create_task'); // Set action for API
+        if (id) formData.append('id', taskData.id);
+
+        formData.append('title', taskData.title);
+        formData.append('description', taskData.description);
+        formData.append('assigned_to', taskData.assignedTo);
+        formData.append('due_date', taskData.dueDate);
+        formData.append('status', taskData.status);
+        formData.append('priority', taskData.priority);
         
-    } catch (error) {
-        console.error('Error saving task:', error);
-        showAlert('Error saving task. ' + error.message, 'error');
-    } finally {
-        // Reset save button state
-        const saveBtn = document.getElementById('save-task');
-        saveBtn.disabled = false;
-        saveBtn.textContent = 'Save Task';
+        if (Array.isArray(taskData.related_items)) {
+            taskData.related_items.forEach((item, index) => {
+                formData.append(`related_items[${index}][related_item_id]`, item.related_item_id);
+                formData.append(`related_items[${index}][related_item_type]`, item.related_item_type);
+            });
+        }
+        
+        const attachmentInput = document.getElementById('task-attachments');
+        if (attachmentInput && attachmentInput.files.length > 0) {
+            for (let i = 0; i < attachmentInput.files.length; i++) {
+                formData.append('attachments[]', attachmentInput.files[i]);
+            }
+        }
+
+        if (id && attachmentsToDelete.length > 0) {
+            attachmentsToDelete.forEach(attId => formData.append('deleted_attachment_ids[]', attId));
+        }
+
+        try {
+            if (id) {
+                await updateTask(formData); 
+                showSuccessToast('Task updated successfully!');
+            } else {
+                const result = await addTask(formData); 
+                showSuccessToast(`Task added successfully! New ID: ${result.taskId}`);
+            }
+            
+            document.getElementById('task-modal')?.classList.add('hidden');
+            await loadTasksTable();
+            currentTaskRelatedItems = []; 
+            attachmentsToDelete = [];    
+        
+        } catch (error) {
+            // Error already handled by apiRequest and toast shown
+        } finally {
+            if(saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Task';
+            }
+        }
     }
-}
 
     async function handleDeleteTask(id) {
         try {
-            const task = await getTask(id);
+            const task = await getTask(id); 
             if (!task) {
-                throw new Error('Task not found');
+                 showErrorToast(`Task with ID ${id} not found. Cannot delete.`);
+                 return;
             }
             
             if (confirm(`Are you sure you want to delete "${task.title}"? This action cannot be undone.`)) {
                 await deleteTask(id);
-                showAlert('Task deleted successfully!', 'success');
+                showSuccessToast('Task deleted successfully!');
                 await loadTasksTable();
             }
         } catch (error) {
-            console.error('Error deleting task:', error);
-            showAlert('Error deleting task. ' + error.message, 'error');
+            // Error already handled by apiRequest and toast shown
         }
     }
+    
+    // Related Items UI Functions
+    function handleAddRelatedItemToList() {
+        const typeSelect = document.getElementById('related-item-type-select');
+        const idInput = document.getElementById('related-item-id-input');
+        const typeValue = typeSelect.value;
+        const idValue = idInput.value.trim();
+
+        if (!typeValue) {
+            showErrorToast("Please select a related item type.");
+            return;
+        }
+        if (!idValue) {
+            showErrorToast("Please enter a related item ID or name.");
+            return;
+        }
+        if (currentTaskRelatedItems.some(item => item.related_item_type === typeValue && item.related_item_id === idValue)) {
+            showInfoToast("This related item is already added.");
+            return;
+        }
+
+        currentTaskRelatedItems.push({ related_item_id: idValue, related_item_type: typeValue });
+        displayCurrentRelatedItems();
+        idInput.value = ''; 
+        typeSelect.value = ''; 
+    }
+
+    function displayCurrentRelatedItems() {
+        const listContainer = document.getElementById('current-related-items-list');
+        if (!listContainer) return;
+        listContainer.innerHTML = ''; 
+
+        currentTaskRelatedItems.forEach((item, index) => {
+            const tag = document.createElement('span');
+            tag.className = 'inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full';
+            tag.innerHTML = `
+                ${capitalizeFirstLetter(item.related_item_type)}: ${item.related_item_id}
+                <button type="button" class="remove-related-item-btn ml-2 text-blue-700 hover:text-blue-900" data-item-index="${index}" title="Remove item">&times;</button>
+            `;
+            listContainer.appendChild(tag);
+        });
+    }
+    
+    // Attachments UI Functions
+    function displayExistingAttachments(attachments = []) {
+        const listContainer = document.getElementById('existing-attachments-list');
+        if (!listContainer) return;
+        listContainer.innerHTML = ''; 
+
+        if (attachments.length === 0) {
+            listContainer.innerHTML = '<p class="text-sm text-gray-500 mb-2">No existing attachments.</p>';
+            return;
+        }
+
+        attachments.forEach(attachment => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'flex items-center justify-between p-2 bg-gray-100 rounded text-sm';
+            itemDiv.innerHTML = `
+                <span>
+                    <i class="fas fa-file-${getFileIconClass(attachment.file_type)} mr-2"></i>
+                    <a href="${attachment.file_path}" target="_blank" class="hover:underline">${attachment.file_name}</a>
+                </span>
+                <button type="button" class="remove-existing-attachment-btn text-red-500 hover:text-red-700" data-attachment-id="${attachment.id}" title="Mark for removal">&times;</button>
+            `;
+            listContainer.appendChild(itemDiv);
+        });
+    }
+    
+    function clearExistingAttachmentsDisplay() {
+        const listContainer = document.getElementById('existing-attachments-list');
+        if (listContainer) listContainer.innerHTML = '';
+    }
+
 
     function handleFileUpload(event) {
         const files = event.target.files;
-        if (!files || files.length === 0) return;
-        
         const fileUploadArea = document.getElementById('file-upload-area');
         const filePreview = document.getElementById('file-preview');
         const previewList = document.getElementById('attachment-preview-list');
+
+        if (!files || files.length === 0) {
+            if (fileUploadArea) fileUploadArea.classList.remove('hidden');
+            if (filePreview) filePreview.classList.add('hidden');
+            if (previewList) previewList.innerHTML = '';
+            return;
+        }
         
-        previewList.innerHTML = '';
+        if(previewList) previewList.innerHTML = ''; 
         
         Array.from(files).forEach(file => {
-            const fileType = file.type.includes('pdf') ? 'pdf' : 'image';
+            const fileTypeIcon = getFileIconClass(file.type);
             const previewItem = document.createElement('div');
             previewItem.className = 'flex items-center justify-between p-2 bg-gray-100 rounded';
             previewItem.innerHTML = `
                 <div class="flex items-center">
-                    <i class="fas fa-file-${fileType} text-${fileType === 'pdf' ? 'red' : 'blue'}-500 mr-2"></i>
+                    <i class="fas fa-file-${fileTypeIcon} mr-2"></i>
                     <span class="text-sm truncate max-w-xs">${file.name}</span>
                     <span class="text-xs text-gray-500 ml-2">(${(file.size / 1024).toFixed(1)} KB)</span>
                 </div>
             `;
-            previewList.appendChild(previewItem);
+            if(previewList) previewList.appendChild(previewItem);
         });
         
-        fileUploadArea.classList.add('hidden');
-        filePreview.classList.remove('hidden');
+        if(fileUploadArea) fileUploadArea.classList.add('hidden');
+        if(filePreview) filePreview.classList.remove('hidden');
     }
 
-    function clearFileUpload() {
-        document.getElementById('task-attachments').value = '';
-        document.getElementById('file-upload-area').classList.remove('hidden');
-        document.getElementById('file-preview').classList.add('hidden');
+    function clearFileUploadDisplayOnly() { 
+        const fileUploadArea = document.getElementById('file-upload-area');
+        const filePreview = document.getElementById('file-preview');
+        const attachmentList = document.getElementById('attachment-preview-list');
+        
+        if(fileUploadArea) fileUploadArea.classList.remove('hidden');
+        if(filePreview) filePreview.classList.add('hidden');
+        if(attachmentList) attachmentList.innerHTML = '';
     }
 
-    function addRelatedItem(type = null, id = null, name = null) {
-        const container = document.getElementById('related-items-container');
-        
-        const itemId = id || Math.random().toString(36).substr(2, 9);
-        const itemType = type || 'crop';
-        const itemName = name || '';
-        
-        const itemElement = document.createElement('div');
-        itemElement.className = 'flex items-center bg-gray-100 rounded-full px-3 py-1';
-        itemElement.innerHTML = `
-            <select class="bg-transparent border-none text-sm focus:ring-0 focus:border-none p-0 mr-2">
-                <option value="crop" ${itemType === 'crop' ? 'selected' : ''}>Crop</option>
-                <option value="livestock" ${itemType === 'livestock' ? 'selected' : ''}>Livestock</option>
-                <option value="equipment" ${itemType === 'equipment' ? 'selected' : ''}>Equipment</option>
-                <option value="field" ${itemType === 'field' ? 'selected' : ''}>Field</option>
-            </select>
-            <input type="text" class="bg-transparent border-none text-sm focus:ring-0 focus:border-none p-0 w-24" 
-                placeholder="ID or name" value="${itemName}">
-            <button class="remove-related-item ml-2 text-gray-500 hover:text-red-500">
-                <i class="fas fa-times"></i>
-            </button>
-            <input type="hidden" name="related_item_id" value="${itemId}">
-        `;
-        
-        container.appendChild(itemElement);
-        
-        // Add event listener to remove button
-        itemElement.querySelector('.remove-related-item').addEventListener('click', () => {
-            container.removeChild(itemElement);
-        });
+    function clearFileUpload() { 
+        const fileInput = document.getElementById('task-attachments');
+        if (fileInput) fileInput.value = ''; 
+        clearFileUploadDisplayOnly();
+        clearExistingAttachmentsDisplay();
+        attachmentsToDelete = [];
+    }
+
+    function addRelatedItem() {
+        // This function is deprecated in favor of handleAddRelatedItemToList
+        showInfoToast('Please use the form fields to add related items.');
     }
 
     function handleConnectionChange() {
         isOnline = navigator.onLine;
         const statusElement = document.getElementById('connection-status');
+        if(!statusElement) return;
         
         if (isOnline) {
             statusElement.className = 'mb-4 p-2 rounded-md text-sm flex items-center bg-green-100 text-green-800';
-            statusElement.innerHTML = '<i class="fas fa-circle mr-2 text-green-500"></i><span>Online - changes will sync to server</span>';
-            
-            // Try to sync pending changes
-            syncPendingTasks();
+            statusElement.innerHTML = '<i class="fas fa-circle mr-2 text-green-500"></i><span>Online</span>';
         } else {
             statusElement.className = 'mb-4 p-2 rounded-md text-sm flex items-center bg-yellow-100 text-yellow-800';
-            statusElement.innerHTML = '<i class="fas fa-circle mr-2 text-yellow-500"></i><span>Offline - changes saved locally and will sync when online</span>';
+            statusElement.innerHTML = '<i class="fas fa-circle mr-2 text-yellow-500"></i><span>Offline - Some features may be unavailable.</span>';
         }
         
         statusElement.classList.remove('hidden');
-        
-        // Hide after 5 seconds
-        setTimeout(() => {
-            statusElement.classList.add('hidden');
-        }, 5000);
+        setTimeout(() => statusElement.classList.add('hidden'), 5000);
     }
 
-    // ========== Notification Functions ========== //
     function showNotification(message, type = 'info') {
-        const notificationCount = document.getElementById('notification-count');
-        const notificationsList = document.getElementById('notifications-list');
-        
-        // Create notification item
-        const notificationItem = document.createElement('div');
-        notificationItem.className = `notification-item unread ${type === 'error' ? 'bg-red-50' : type === 'success' ? 'bg-green-50' : 'bg-blue-50'}`;
-        notificationItem.innerHTML = `
-            <div class="flex items-start">
-                <div class="flex-shrink-0 mt-0.5">
-                    <i class="fas ${type === 'error' ? 'fa-exclamation-circle text-red-500' : type === 'success' ? 'fa-check-circle text-green-500' : 'fa-info-circle text-blue-500'}"></i>
-                </div>
-                <div class="ml-3 flex-1">
-                    <p class="text-sm text-gray-700">${message}</p>
-                    <p class="text-xs text-gray-500 mt-1">${formatDateTime(new Date())}</p>
-                </div>
-            </div>
-        `;
-        
-        // Add to top of list
-        if (notificationsList.firstChild) {
-            notificationsList.insertBefore(notificationItem, notificationsList.firstChild);
-        } else {
-            notificationsList.appendChild(notificationItem);
-        }
-        
-        // Update notification count
-        const currentCount = parseInt(notificationCount.textContent) || 0;
-        notificationCount.textContent = currentCount + 1;
-        notificationCount.classList.remove('hidden');
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            notificationItem.classList.remove('unread');
-        }, 5000);
+        if (type === 'success') showSuccessToast(message);
+        else if (type === 'error') showErrorToast(message);
+        else showInfoToast(message);
     }
 
     function setupNotificationsDropdown() {
         const notificationsBtn = document.getElementById('notifications-btn');
         const notificationsDropdown = document.getElementById('notifications-dropdown');
         
-        notificationsBtn.addEventListener('click', function() {
-            notificationsDropdown.classList.toggle('hidden');
-            
-            // Mark notifications as read when dropdown is opened
-            if (!notificationsDropdown.classList.contains('hidden')) {
-                document.querySelectorAll('.notification-item.unread').forEach(item => {
-                    item.classList.remove('unread');
-                });
-                
-                // Reset notification count
-                document.getElementById('notification-count').classList.add('hidden');
-                document.getElementById('notification-count').textContent = '0';
-            }
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(event) {
-            if (!notificationsBtn.contains(event.target) ){
-                notificationsDropdown.classList.add('hidden');
-            }
-        });
+        if(notificationsBtn && notificationsDropdown) {
+            notificationsBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                notificationsDropdown.classList.toggle('hidden');
+                if (!notificationsDropdown.classList.contains('hidden')) {
+                    document.querySelectorAll('.notification-item.unread').forEach(item => {
+                        item.classList.remove('unread');
+                    });
+                    const countEl = document.getElementById('notification-count');
+                    if(countEl) {
+                        countEl.classList.add('hidden');
+                        countEl.textContent = '0';
+                    }
+                }
+            });
+        }
     }
 
     // ========== Helper Functions ========== //
     function formatDate(dateString) {
         if (!dateString) return '-';
+        const dateParts = dateString.split('-');
+        if (dateParts.length === 3) {
+            const date = new Date(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
+            if (isNaN(date.getTime())) return 'Invalid Date';
+            const options = { year: 'numeric', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString(undefined, options);
+        }
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date';
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString(undefined, options);
+        return date.toLocaleDateString(undefined, options);
     }
 
-    function formatDateTime(date) {
-        if (!date) return '-';
+    function formatDateTime(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Invalid Date/Time';
         const options = { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
         };
-        return new Date(date).toLocaleDateString(undefined, options);
+        return date.toLocaleString(undefined, options);
     }
 
-    function isOverdue(dueDate, status) {
+    function isOverdue(dueDate, status) { 
         if (!dueDate || status === 'completed') return false;
-        const today = new Date().toISOString().split('T')[0];
-        return dueDate < today;
+        const today = new Date();
+        today.setHours(0,0,0,0); 
+        return new Date(dueDate) < today;
     }
 
     function daysOverdue(dueDate) {
         if (!dueDate) return 0;
         const today = new Date();
+        today.setHours(0,0,0,0);
         const due = new Date(dueDate);
+        due.setHours(0,0,0,0);
         const diffTime = today - due;
-        return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
     }
 
     function capitalizeFirstLetter(string) {
@@ -2432,104 +1967,51 @@ function toggleView() {
             case 'livestock': return 'cow';
             case 'equipment': return 'tractor';
             case 'field': return 'map-marked-alt';
+            case 'inventory': return 'boxes';
             default: return 'link';
         }
     }
 
-    function sortTasks(tasks, sortBy) {
+    function sortTasks(tasks, sortBy) { 
         if (!tasks) return [];
-        
         return [...tasks].sort((a, b) => {
             switch(sortBy) {
-                case 'title-asc':
-                    return (a.title || '').localeCompare(b.title || '');
-                case 'title-desc':
-                    return (b.title || '').localeCompare(a.title || '');
-                case 'due-date-asc':
-                    return new Date(a.dueDate || 0) - new Date(b.dueDate || 0);
-                case 'due-date-desc':
-                    return new Date(b.dueDate || 0) - new Date(a.dueDate || 0);
+                case 'title-asc': return (a.title || '').localeCompare(b.title || '');
+                case 'title-desc': return (b.title || '').localeCompare(a.title || '');
+                case 'due-date-asc': return new Date(a.due_date || 0) - new Date(b.due_date || 0);
+                case 'due-date-desc': return new Date(b.due_date || 0) - new Date(a.due_date || 0);
                 case 'priority-asc':
-                    const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
-                    return (priorityOrder[a.priority] || 0) - (priorityOrder[b.priority] || 0);
+                    const po = { 'low': 1, 'medium': 2, 'high': 3 };
+                    return (po[a.priority] || 0) - (po[b.priority] || 0);
                 case 'priority-desc':
-                    const priorityOrderDesc = { 'high': 3, 'medium': 2, 'low': 1 };
-                    return (priorityOrderDesc[b.priority] || 0) - (priorityOrderDesc[a.priority] || 0);
-                default:
-                    return 0;
+                    const pod = { 'low': 1, 'medium': 2, 'high': 3 };
+                    return (pod[b.priority] || 0) - (pod[a.priority] || 0);
+                default: return 0;
             }
         });
     }
 
     function showAlert(message, type = 'info') {
-        // Create alert element
-        const alert = document.createElement('div');
-        alert.className = `fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg ${
-            type === 'error' ? 'bg-red-50 text-red-800' : 
-            type === 'success' ? 'bg-green-50 text-green-800' : 
-            'bg-blue-50 text-blue-800'
-        }`;
-        alert.innerHTML = `
-            <div class="flex items-center">
-                <i class="fas ${
-                    type === 'error' ? 'fa-exclamation-circle' : 
-                    type === 'success' ? 'fa-check-circle' : 
-                    'fa-info-circle'
-                } mr-2"></i>
-                <span>${message}</span>
-                <button class="ml-4 text-gray-500 hover:text-gray-700" onclick="this.parentElement.parentElement.remove()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
-        
-        // Add to body
-        document.body.appendChild(alert);
-        
-        // Auto-remove after 5 seconds
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.remove();
-            }
-        }, 5000);
+        showToast(message, type);
     }
 
     // ========== Initialize Application ========== //
-        async function initApp() {
+    async function initApp() {
         try {
-            await initDB();
-            await verifyDatabase();
-            
-            // Initialize both views
-            document.getElementById('card-view').classList.add('hidden');
-            document.getElementById('table-view').classList.remove('hidden');
-            
             setupEventListeners();
             setupNotificationsDropdown();
-            handleConnectionChange();
+            handleConnectionChange(); 
             
-            window.statusChart = null;
-            updateStatusChart([]);
+            window.statusChart = null; 
+            updateStatusChartWithStats({});    
             
-            await loadTasksTable();
+            await loadTasksTable(); 
             
-            if (isOnline) {
-                await syncPendingTasks();
-            }
+            showInfoToast('Task management loaded.');
             
-            showNotification('Task management loaded successfully', 'success');
-            
-            window.addEventListener('beforeunload', () => {
-                if (pendingSync.length > 0) {
-                    return "You have unsynced changes. Are you sure you want to leave?";
-                }
-            });
         } catch (error) {
             console.error('Initialization error:', error);
-            showAlert('Failed to initialize task management. ' + error.message, 'error');
-            setTimeout(() => {
-                window.location.reload();
-            }, 3000);
+            showErrorToast('Failed to initialize task management: ' + error.message);
         }
     }
 

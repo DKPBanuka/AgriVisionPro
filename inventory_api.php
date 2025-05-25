@@ -255,8 +255,8 @@ try {
 
             if ($item) {
                 // Fetch activities related to this item
-                // Assuming an 'activities' table with an 'item_id' foreign key
-                $activitiesSql = "SELECT * FROM activities WHERE item_id = ? AND user_id = ? ORDER BY timestamp DESC";
+                // Assuming an 'activities' table with an 'inventory_id' foreign key
+                $activitiesSql = "SELECT * FROM activities WHERE inventory_id = ? AND user_id = ? ORDER BY timestamp DESC";
                 $activitiesStmt = $pdo->prepare($activitiesSql);
                 $activitiesStmt->execute([$itemId, $userId]);
                 $activities = $activitiesStmt->fetchAll(PDO::FETCH_ASSOC); // Fetch all activities for this item
@@ -328,14 +328,14 @@ try {
             if ($success) {
                 $newItemId = $pdo->lastInsertId(); // Get the ID of the newly inserted item
 
-                // --- FIX: Log activity linked to the new item_id ---
+                // --- FIX: Log activity linked to the new inventory_id ---
                 // Insert activity log for item creation
                 $activityType = 'item_added';
                 $activityNotes = "Item '$name' added.";
                  // Optional: Log initial quantity
                  $activityQuantityChange = $quantity; // Log the initial quantity as a change
                  // Insert into activities table
-                 $activitySql = "INSERT INTO activities (user_id, item_id, type, notes, timestamp, quantity_change) VALUES (?, ?, ?, ?, NOW(), ?)";
+                 $activitySql = "INSERT INTO activities (user_id, inventory_id, type, notes, timestamp, quantity_change) VALUES (?, ?, ?, ?, NOW(), ?)";
                  $activityStmt = $pdo->prepare($activitySql);
                  $activityStmt->execute([$userId, $newItemId, $activityType, $activityNotes, $activityQuantityChange]);
 
@@ -467,7 +467,7 @@ try {
                  // Check if any rows were actually updated (item exists and belongs to user)
                  if ($stmt->rowCount() > 0) {
 
-                     // --- FIX: Log activity linked to item_id for update and quantity change ---
+                     // --- FIX: Log activity linked to inventory_id for update and quantity change ---
                      $activityType = 'item_updated';
                      $activityNotes = "Item '$name' updated.";
                      $activityQuantityChange = null; // Default: no quantity change logged by update action itself
@@ -505,7 +505,7 @@ try {
                      }
 
                      // Insert the main update or stock change activity
-                      $activitySql = "INSERT INTO activities (user_id, item_id, type, notes, timestamp, quantity_change) VALUES (?, ?, ?, ?, NOW(), ?)";
+                      $activitySql = "INSERT INTO activities (user_id, inventory_id, type, notes, timestamp, quantity_change) VALUES (?, ?, ?, ?, NOW(), ?)";
                       $activityStmt = $pdo->prepare($activitySql);
                       $activityStmt->execute([$userId, $itemId, $activityType, $activityNotes, $activityQuantityChange]);
 
@@ -565,7 +565,7 @@ try {
 
                      // --- FIX: Delete associated activities ---
                      // Delete all activities linked to this item
-                     $deleteActivitiesSql = "DELETE FROM activities WHERE item_id = ? AND user_id = ?";
+                     $deleteActivitiesSql = "DELETE FROM activities WHERE inventory_id = ? AND user_id = ?";
                      $deleteActivitiesStmt = $pdo->prepare($deleteActivitiesSql);
                      $deleteActivitiesStmt->execute([$itemId, $userId]);
 
@@ -582,11 +582,11 @@ try {
                     // --- FIX: Log activity for item deletion ---
                      $activityType = 'item_deleted';
                      $activityNotes = "Item '$itemName' deleted.";
-                     // Insert into activities table (no item_id link as item is deleted, but log for user)
-                     // Decide if you want to log deletion activity WITHOUT an item_id link, or if
+                     // Insert into activities table (no inventory_id link as item is deleted, but log for user)
+                     // Decide if you want to log deletion activity WITHOUT an inventory_id link, or if
                      // activities MUST link to an item. If activities MUST link, this log can't happen
-                     // in the 'activities' table if item_id is a strict FK.
-                     // Assuming activities can exist without an item_id (e.g., user deleted an item)
+                     // in the 'activities' table if inventory_id is a strict FK.
+                     // Assuming activities can exist without an inventory_id (e.g., user deleted an item)
                       $activitySql = "INSERT INTO activities (user_id, type, notes, timestamp) VALUES (?, ?, ?, NOW())";
                       $activityStmt = $pdo->prepare($activitySql);
                       $activityStmt->execute([$userId, $activityType, $activityNotes]);

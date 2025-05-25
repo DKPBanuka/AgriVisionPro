@@ -190,8 +190,8 @@ function getInitials($name) {
 <body class="h-full overflow-hidden">
     <!-- App Container -->
     <div class="flex h-full">
-    <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col">
-    <div class="p-5 flex items-center space-x-3 flex-shrink-0"> <div class="w-10 h-10 rounded-full flex items-center justify-center"> <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain"> </div>
+    <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col overflow-y-auto">
+    <div class="p-5 flex items-center space-x-3 flex-shrink-0 bg-gradient-to-b from-blue-900 to-blue-900 sticky top-0 z-10"> <div class="w-10 h-10 rounded-full flex items-center justify-center"> <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain"> </div>
         <h1 class="text-xl font-bold">AgriVision Pro</h1> </div>
     
     <nav class="flex-grow pt-2"> <div class="px-3 space-y-0.5"> 
