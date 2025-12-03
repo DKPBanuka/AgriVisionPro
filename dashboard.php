@@ -5,7 +5,7 @@ session_start();
 $host = 'localhost';
 $db   = 'agri_vision_pro'; // Make sure this matches your database name
 $user = 'root';
-$pass = 'root'; // Use your actual password
+$pass = ''; // Use your actual password
 $charset = 'utf8mb4';
 
 // Establish database connection

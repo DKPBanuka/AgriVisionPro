@@ -1,0 +1,60 @@
+﻿Table: crops
+id - int - Null: NO - Default: 
+user_id - int - Null: NO - Default: 
+name - varchar(255) - Null: NO - Default: 
+variety - varchar(255) - Null: YES - Default: 
+crop_type - enum('grain','vegetable','fruit','legume','other') - Null: NO - Default: other
+field - varchar(255) - Null: NO - Default: 
+area - decimal(10,2) - Null: NO - Default: 
+planted_date - date - Null: NO - Default: 
+harvest_date - date - Null: YES - Default: 
+status - enum('growing','harvested','planned','problem') - Null: NO - Default: planned
+expected_yield - decimal(10,2) - Null: YES - Default: 
+notes - text - Null: YES - Default: 
+image_url - varchar(255) - Null: YES - Default: 
+createdAt - datetime - Null: NO - Default: CURRENT_TIMESTAMP
+updatedAt - datetime - Null: NO - Default: CURRENT_TIMESTAMP
+
+Table: livestock
+id - int - Null: NO - Default: 
+user_id - int - Null: NO - Default: 
+idTag - varchar(50) - Null: NO - Default: 
+type - varchar(50) - Null: YES - Default: 
+breed - varchar(100) - Null: YES - Default: 
+ageYears - int - Null: YES - Default: 0
+ageMonths - int - Null: YES - Default: 0
+birthDate - date - Null: YES - Default: 
+weight - decimal(10,2) - Null: YES - Default: 0.00
+weightUnit - varchar(10) - Null: YES - Default: kg
+status - varchar(50) - Null: YES - Default: healthy
+location - varchar(100) - Null: YES - Default: 
+notes - text - Null: YES - Default: 
+image_url - varchar(255) - Null: YES - Default: 
+createdAt - datetime - Null: YES - Default: CURRENT_TIMESTAMP
+updatedAt - datetime - Null: YES - Default: CURRENT_TIMESTAMP
+
+Table: inventory
+id - int - Null: NO - Default: 
+user_id - int - Null: NO - Default: 
+name - varchar(255) - Null: NO - Default: 
+category - varchar(100) - Null: YES - Default: 
+quantity - decimal(10,2) - Null: NO - Default: 0.00
+unit - varchar(50) - Null: YES - Default: 
+location - varchar(255) - Null: YES - Default: 
+notes - text - Null: YES - Default: 
+image_url - varchar(255) - Null: YES - Default: 
+createdAt - timestamp - Null: YES - Default: CURRENT_TIMESTAMP
+updatedAt - timestamp - Null: YES - Default: CURRENT_TIMESTAMP
+
+Table: tasks
+id - bigint unsigned - Null: NO - Default: 
+user_id - bigint unsigned - Null: NO - Default: 
+title - varchar(255) - Null: NO - Default: 
+description - text - Null: YES - Default: 
+assigned_to - varchar(255) - Null: YES - Default: 
+due_date - date - Null: YES - Default: 
+status - enum('pending','in-progress','completed') - Null: NO - Default: pending
+priority - enum('low','medium','high') - Null: NO - Default: medium
+created_at - datetime - Null: NO - Default: 
+updated_at - datetime - Null: NO - Default: 
+

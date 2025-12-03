@@ -9,7 +9,7 @@ ini_set('display_errors', 1);
 $host = 'localhost';
 $db   = 'agri_vision_pro';
 $user = 'root';
-$pass = 'root';
+$pass = '';
 $charset = 'utf8mb4';
 
 // Establish database connection

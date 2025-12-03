@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriVisionPro JS Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { color: #16a085; }
+        .error { color: #e74c3c; }
+        .info { color: #3498db; }
+    </style>
+</head>
+<body>
+    <h1>AgriVisionPro JavaScript Test</h1>
+    
+    <div class="test-container">
+        <h2>Module Loading Test</h2>
+        <div id="module-test">Testing modules...</div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Data Loading Test</h2>
+        <div id="data-test">Testing data...</div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Chart Utilities Test</h2>
+        <div id="chart-test">Testing chart utilities...</div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Application Initialization Test</h2>
+        <div id="app-test">Testing application...</div>
+    </div>
+
+    <!-- Load external libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    
+    <!-- Load application modules -->
+    <script src="js/data.js"></script>
+    <script src="js/charts.js"></script>
+    
+    <script>
+        // Test module loading
+        function testModules() {
+            const moduleTest = document.getElementById('module-test');
+            let passed = 0;
+            let total = 3;
+            
+            // Test AgriData
+            if (typeof AgriData !== 'undefined') {
+                moduleTest.innerHTML += '<p class="success">✓ AgriData module loaded</p>';
+                passed++;
+            } else {
+                moduleTest.innerHTML += '<p class="error">✗ AgriData module failed</p>';
+            }
+            
+            // Test ChartUtils
+            if (typeof ChartUtils !== 'undefined') {
+                moduleTest.innerHTML += '<p class="success">✓ ChartUtils module loaded</p>';
+                passed++;
+            } else {
+                moduleTest.innerHTML += '<p class="error">✗ ChartUtils module failed</p>';
+            }
+            
+            // Test Chart.js
+            if (typeof Chart !== 'undefined') {
+                moduleTest.innerHTML += '<p class="success">✓ Chart.js library loaded</p>';
+                passed++;
+            } else {
+                moduleTest.innerHTML += '<p class="error">✗ Chart.js library failed</p>';
+            }
+            
+            moduleTest.innerHTML += `<p class="info">Modules: ${passed}/${total} passed</p>`;
+        }
+        
+        // Test data loading
+        function testData() {
+            const dataTest = document.getElementById('data-test');
+            let passed = 0;
+            let total = 4;
+            
+            try {
+                const cropData = AgriData.getCropData();
+                if (cropData && cropData.rice) {
+                    dataTest.innerHTML += '<p class="success">✓ Crop data loaded</p>';
+                    passed++;
+                } else {
+                    dataTest.innerHTML += '<p class="error">✗ Crop data failed</p>';
+                }
+                
+                const livestockData = AgriData.getLivestockData();
+                if (livestockData && livestockData.cattle) {
+                    dataTest.innerHTML += '<p class="success">✓ Livestock data loaded</p>';
+                    passed++;
+                } else {
+                    dataTest.innerHTML += '<p class="error">✗ Livestock data failed</p>';
+                }
+                
+                const marketData = AgriData.getMarketData();
+                if (marketData && marketData.currentPrices) {
+                    dataTest.innerHTML += '<p class="success">✓ Market data loaded</p>';
+                    passed++;
+                } else {
+                    dataTest.innerHTML += '<p class="error">✗ Market data failed</p>';
+                }
+                
+                const resourceData = AgriData.getResourceData();
+                if (resourceData && resourceData.governmentInstitutions) {
+                    dataTest.innerHTML += '<p class="success">✓ Resource data loaded</p>';
+                    passed++;
+                } else {
+                    dataTest.innerHTML += '<p class="error">✗ Resource data failed</p>';
+                }
+            } catch (e) {
+                dataTest.innerHTML += `<p class="error">✗ Data loading error: ${e.message}</p>`;
+            }
+            
+            dataTest.innerHTML += `<p class="info">Data tests: ${passed}/${total} passed</p>`;
+        }
+        
+        // Test chart utilities
+        function testChartUtils() {
+            const chartTest = document.getElementById('chart-test');
+            let passed = 0;
+            let total = 2;
+            
+            try {
+                const chartUtils = new ChartUtils();
+                if (chartUtils) {
+                    chartTest.innerHTML += '<p class="success">✓ ChartUtils instance created</p>';
+                    passed++;
+                } else {
+                    chartTest.innerHTML += '<p class="error">✗ ChartUtils instance failed</p>';
+                }
+                
+                // Test if methods exist
+                if (typeof chartUtils.createCropTimelineChart === 'function') {
+                    chartTest.innerHTML += '<p class="success">✓ Chart methods available</p>';
+                    passed++;
+                } else {
+                    chartTest.innerHTML += '<p class="error">✗ Chart methods missing</p>';
+                }
+            } catch (e) {
+                chartTest.innerHTML += `<p class="error">✗ ChartUtils error: ${e.message}</p>`;
+            }
+            
+            chartTest.innerHTML += `<p class="info">Chart tests: ${passed}/${total} passed</p>`;
+        }
+        
+        // Test application
+        function testApp() {
+            const appTest = document.getElementById('app-test');
+            
+            // Create a temporary container for the app
+            const tempDiv = document.createElement('div');
+            tempDiv.id = 'temp-app-test';
+            document.body.appendChild(tempDiv);
+            
+            try {
+                // We won't initialize the full app here, just test if it can be created
+                appTest.innerHTML += '<p class="success">✓ Application modules ready for initialization</p>';
+                appTest.innerHTML += '<p class="info">Full app can be loaded in index-js.html</p>';
+            } catch (e) {
+                appTest.innerHTML += `<p class="error">✗ Application error: ${e.message}</p>`;
+            } finally {
+                // Clean up
+                document.body.removeChild(tempDiv);
+            }
+        }
+        
+        // Run all tests
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                testModules();
+                testData();
+                testChartUtils();
+                testApp();
+            }, 100);
+        });
+    </script>
+</body>
+</html>

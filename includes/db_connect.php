@@ -4,7 +4,7 @@
 $host = 'localhost';
 $db   = 'agri_vision_pro';
 $user = 'root';
-$pass = 'root';
+$pass = '';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

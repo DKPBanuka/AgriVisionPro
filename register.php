@@ -10,7 +10,7 @@ if (isset($_SESSION['logged_in'])) {
 // Database configuration
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', 'root'); // Change to your actual password
+define('DB_PASS', ''); // Change to your actual password
 define('DB_NAME', 'agri_vision_pro');
 
 // Handle registration

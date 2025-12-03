@@ -4,7 +4,7 @@ require_once 'includes/db_connect.php';
 require_once 'includes/auth_functions.php';
 checkAuthentication();
 
-// Get user details from session and database
+// Get user details
 $current_user = [
     'name' => $_SESSION['full_name'] ?? 'Unknown User',
     'email' => $_SESSION['username'] ?? 'No email',
@@ -13,24 +13,20 @@ $current_user = [
     'profile_picture' => ''
 ];
 
-// Try to get profile data from database
+// Fetch profile data
 try {
     $stmt = $pdo->prepare("SELECT * FROM profiles WHERE user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $profile = $stmt->fetch(PDO::FETCH_ASSOC);
-    
     if ($profile) {
-        // Update with profile data if available
         $current_user['name'] = $profile['full_name'] ?? $current_user['name'];
         $current_user['email'] = $profile['email'] ?? $current_user['email'];
         $current_user['profile_picture'] = $profile['profile_picture'] ?? '';
     }
 } catch (PDOException $e) {
     error_log("Error fetching profile: " . $e->getMessage());
-    // Continue with session data if there's an error
 }
 
-// Helper function to get initials from name
 function getInitials($name) {
     $names = explode(' ', $name);
     $initials = '';
@@ -41,452 +37,292 @@ function getInitials($name) {
     return $initials ?: 'UU';
 }
 
-// Fetch analytics data (mock data for this example)
-$analyticsData = [
-    'tasks' => [
-        'completed' => 78,
-        'on_time' => 65,
-        'overdue' => 13,
-        'trend' => 'up'
-    ],
-    'crops' => [
-        'yield_prediction' => 1250,
-        'average_yield' => 1100,
-        'variance' => '+13.6%',
-        'trend' => 'up'
-    ],
-    'livestock' => [
-        'healthy' => 85,
-        'sick' => 5,
-        'pregnant' => 7,
-        'trend' => 'neutral'
-    ],
-    'inventory' => [
-        'low_stock' => 8,
-        'critical_stock' => 3,
-        'turnover_rate' => '1.2',
-        'trend' => 'down'
-    ],
-    'financial' => [
-        'profit' => 12500,
-        'expenses' => 8750,
-        'revenue' => 21250,
-        'trend' => 'up'
-    ]
-];
-?>
-<!DOCTYPE html>
-<html lang="en" class="h-full bg-gray-50">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgriVision Pro | Analytics Dashboard</title>
-    <link rel="icon" href="./images/logo.png" type="image/png">
+// --- Fetch Real Analytics Data ---
+$userId = $_SESSION['user_id'];
+$analytics = [];
+
+try {
+    // 1. Crops Analytics
+    $cropStats = $pdo->prepare("SELECT 
+        COUNT(*) as total_crops,
+        SUM(CASE WHEN status = 'growing' THEN 1 ELSE 0 END) as active_crops,
+        SUM(area) as total_area,
+        SUM(expected_yield) as total_yield
+        FROM crops WHERE user_id = ?");
+    $cropStats->execute([$userId]);
+    $analytics['crops'] = $cropStats->fetch(PDO::FETCH_ASSOC);
+
+    // Crop Types for Chart
+    $cropTypes = $pdo->prepare("SELECT crop_type, COUNT(*) as count FROM crops WHERE user_id = ? GROUP BY crop_type");
+    $cropTypes->execute([$userId]);
+    $analytics['crop_types'] = $cropTypes->fetchAll(PDO::FETCH_ASSOC);
+
+    // 2. Livestock Analytics
+    $livestockStats = $pdo->prepare("SELECT 
+        COUNT(*) as total_animals,
+        SUM(CASE WHEN status = 'healthy' THEN 1 ELSE 0 END) as healthy,
+        SUM(CASE WHEN status = 'sick' THEN 1 ELSE 0 END) as sick
+        FROM livestock WHERE user_id = ?");
+    $livestockStats->execute([$userId]);
+    $analytics['livestock'] = $livestockStats->fetch(PDO::FETCH_ASSOC);
+
+    // Livestock Types for Chart
+    $livestockTypes = $pdo->prepare("SELECT type, COUNT(*) as count FROM livestock WHERE user_id = ? GROUP BY type");
+    $livestockTypes->execute([$userId]);
+    $analytics['livestock_types'] = $livestockTypes->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. Tasks Analytics
+    $taskStats = $pdo->prepare("SELECT 
+        COUNT(*) as total_tasks,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'in-progress' THEN 1 ELSE 0 END) as in_progress,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+        FROM tasks WHERE user_id = ?");
+    $taskStats->execute([$userId]);
+    $analytics['tasks'] = $taskStats->fetch(PDO::FETCH_ASSOC);
+
+    // 4. Inventory Analytics
+    $inventoryStats = $pdo->prepare("SELECT 
+    <link rel="icon" href="./images/logo1.png" type="image/png">
     <link href="./dist/output.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .sidebar-enter {
-            transform: translateX(-100%);
-        }
-        .sidebar-enter-active {
-            transform: translateX(0);
-            transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .modal {
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        .modal {
-            z-index: 50;
-        }
-        .status-healthy {
-            color: #10B981;
-            background-color: #ECFDF5;
-        }
-        .status-pregnant {
-            color: #8B5CF6;
-            background-color: #F5F3FF;
-        }
-        .status-sick {
-            color: #EF4444;
-            background-color: #FEE2E2;
-        }
-        .status-injured {
-            color: #F97316;
-            background-color: #FFF7ED;
-        }
-        .search-results {
-            position: absolute;
-            width: 100%;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 1000;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.375rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-        .search-item {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            border-bottom: 1px solid #f3f4f6;
-        }
-        .search-item:hover {
-            background-color: #f9fafb;
-        }
-        .user-profile-dropdown {
-            min-width: 200px;
-        }
-        .animal-card {
-            transition: all 0.3s ease;
-        }
-        .animal-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        /* Timeline styling */
-        .timeline-progress {
-            transition: width 0.6s ease;
-        }
-        /* Activity items */
-        .activity-item {
-            transition: all 0.2s ease;
-        }
-        .activity-item:hover {
-            transform: translateX(2px);
-        }
-        /* Form labels */
-        .required-field::after {
-            content: '*';
-            color: #ef4444;
-            margin-left: 0.25rem;
-        }
-        /* Image upload preview */
-        #preview-image {
-            max-height: 200px;
-            max-width: 100%;
-        }
-        /* Status badges */
-        .status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: inline-block;
-        }
-        /* Modal scrollable area */
-        .modal-content {
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .max-h-[calc(100vh-200px)] {
-            max-height: calc(100vh - 200px);
-        }
-        /* Sticky header and footer */
-        .sticky {
-            position: sticky;
-        }
-        .top-0 {
-            top: 0;
-        }
-        .bottom-0 {
-            bottom: 0;
-        }
-        /* Smooth scrolling */
-        .overflow-y-auto {
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-        }
-        /* Better scrollbar */
-        .overflow-y-auto::-webkit-scrollbar {
-            width: 8px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
-        }
-        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-        
-        /* 3D Chart Container */
-        #livestock3dChart {
-            width: 100%;
-            height: 400px;
-            background-color: #f8fafc;
-            border-radius: 0.5rem;
-        }
-        
-        /* Analytics Card Styles */
-        .analytics-card {
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        
-        .analytics-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        
-        /* Trend indicators */
-        .trend-up {
-            color: #10B981;
-        }
-        
-        .trend-down {
-            color: #EF4444;
-        }
-        
-        .trend-neutral {
-            color: #6B7280;
-        }
-        
-        /* Custom scrollbar for data tables */
-        .custom-scrollbar::-webkit-scrollbar {
-            height: 8px;
-            width: 8px;
-        }
-        
-        /* Filter dropdowns */
-        .filter-dropdown {
-            transition: all 0.2s ease;
-        }
-        
-        .filter-dropdown:hover {
-            background-color: #f3f4f6;
-        }
-        
-        @media (min-width: 640px) {
-            .sm\:max-w-2xl {
-                max-width: 40rem;
-            }
-        }
-        @media (min-width: 768px) {
-            .md\:max-w-2xl {
-                max-width: 50rem;
-            }
-        }
-        @media (min-width: 1024px) {
-            .lg\:max-w-2xl {
-                max-width: 60rem;
-            }
-        }
-        .nav-item {
-            position: relative;
-        }
-        .nav-item.active::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background-color: #3B82F6;
-        }
-        .dropdown:hover .dropdown-menu {
-            display: block;
-        }
-        
-        /* Custom animations */
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
-        }
-        .animate-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        /* Glow effect for important cards */
-        .glow-card {
-            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
-        }
-        .glow-card:hover {
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-        }
-        
-        /* Custom chart tooltip */
-        .chart-tooltip {
-            position: absolute;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            pointer-events: none;
-            z-index: 100;
-            transform: translate(-50%, -100%);
-        }
-        
-        /* Custom scroll snap for dashboard sections */
-        .scroll-snap {
-            scroll-snap-type: y proximity;
-        }
-        .scroll-snap > div {
-            scroll-snap-align: start;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        .card-hover { transition: transform 0.2s; }
+        .card-hover:hover { transform: translateY(-5px); }
     </style>
 </head>
 <body class="h-full overflow-hidden">
-    <!-- App Container -->
     <div class="flex h-full">
-        <!-- Dynamic Sidebar -->
-        <aside id="sidebar" class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col">
-            <div class="p-5 flex items-center space-x-3 flex-shrink-0"> <div class="w-10 h-10 rounded-full flex items-center justify-center"> <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain"> </div>
-                <h1 class="text-xl font-bold">AgriVision Pro</h1> </div>
-            
-            <nav class="flex-grow pt-2"> <div class="px-3 space-y-0.5"> 
-                    <a href="dashboard.php" class="flex items-center px-3 py-2 rounded-lg bg-blue-500 bg-opacity-30 text-m text-white-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Dashboard
-                    </a>
-                    <a href="crops.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                        </svg>
-                        Crop Management
-                    </a>
-                    <a href="livestock.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                        Livestock
-                    </a>
-                    <a href="inventory.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        Inventory
-                    </a>
-                    <a href="tasks.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        Tasks
-                    </a>
+        <!-- Sidebar (Reused) -->
+        <aside class="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white shadow-xl h-screen flex flex-col overflow-y-auto">
+            <div class="p-5 flex items-center space-x-3 flex-shrink-0 bg-gradient-to-b from-blue-900 to-blue-900 sticky top-0 z-10">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center">
+                    <img src="./images/logo5.png" alt="App Logo" class="h-10 w-10 object-contain">
                 </div>
-                
-                
-                <div class="mt-4 pt-4 border-t border-blue-700"> <div class="px-3"> <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-1">Analytics</h3> <div class="space-y-0.5"> <a href="analytics.php?type=crop" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Crop Analytics
-                            </a>
-                            <a href="analytics.php?type=livestock" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Livestock Analytics
-                            </a>
-                            <a href="analytics.php?type=inventory" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Inventory Analytics
-                            </a>
-                            <a href="/agrivisionpro/analytics/financial-analytics.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Financial Analytics
-                            </a>
-                            <a href="analytics.php?type=tasks" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Tasks Analytics
-                            </a>
-                        </div>
-                    </div>
+                <h1 class="text-xl font-bold">AgriVision Pro</h1>
+            </div>
+            <nav class="flex-grow pt-2 px-3 space-y-1">
+                <a href="dashboard.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-50 text-blue-100 hover:text-white transition-colors">
+                    <i class="fas fa-home w-5 mr-2"></i> Dashboard
+                </a>
+                <a href="crops.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-50 text-blue-100 hover:text-white transition-colors">
+                    <i class="fas fa-seedling w-5 mr-2"></i> Crops
+                </a>
+                <a href="livestock.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-50 text-blue-100 hover:text-white transition-colors">
+                    <i class="fas fa-paw w-5 mr-2"></i> Livestock
+                </a>
+                <a href="inventory.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-50 text-blue-100 hover:text-white transition-colors">
+                    <i class="fas fa-boxes w-5 mr-2"></i> Inventory
+                </a>
+                <a href="tasks.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-50 text-blue-100 hover:text-white transition-colors">
+                    <i class="fas fa-tasks w-5 mr-2"></i> Tasks
+                </a>
+                <div class="pt-4 pb-2">
+                    <p class="px-3 text-xs font-semibold text-blue-300 uppercase tracking-wider">Analytics</p>
                 </div>
-                
-                <div class="mt-4 pt-4 border-t border-blue-700"> <div class="px-3 space-y-0.5"> <a href="settings.php" class="flex items-center px-3 py-2 rounded-lg hover:bg-blue-700 hover:bg-opacity-30 text-m text-blue-100 hover:text-white group"> <svg class="mr-2 h-5 w-5 text-blue-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.94 1.543.826 3.31 2.37 2.37.996.608 2.296.07 2.572-1.065z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Settings
-                        </a>
-                    </div>
-                </div>
+                <a href="analytics.php" class="flex items-center px-3 py-2 rounded-lg bg-blue-700 text-white font-medium">
+                    <i class="fas fa-chart-line w-5 mr-2"></i> Overview
+                </a>
             </nav>
         </aside>
 
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
-            <!-- Top Navigation -->
+            <!-- Header -->
             <header class="bg-white shadow-sm z-10">
                 <div class="flex items-center justify-between px-6 py-3">
-                    <div class="flex items-center">
-                        <button id="sidebar-toggle" class="mr-4 text-gray-500 hover:text-gray-600 focus:outline-none" title="Toggle Sidebar">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        <div class="relative max-w-md w-full">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                            <input id="search-input" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Search analytics..." type="search">
-                            <div id="search-results" class="search-results hidden"></div>
+                    <h2 class="text-xl font-semibold text-gray-800">Analytics Overview</h2>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <?php if (!empty($current_user['profile_picture'])): ?>
+                                <img src="<?= htmlspecialchars($current_user['profile_picture']) ?>" class="h-8 w-8 rounded-full object-cover">
+                            <?php else: ?>
+                                <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                                    <?= $current_user['initials'] ?>
+                                </div>
+                            <?php endif; ?>
+                            <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($current_user['name']) ?></span>
                         </div>
                     </div>
-                    
-                    <div class="flex items-center space-x-4">
-                        <button class="p-1 text-gray-400 hover:text-gray-500 focus:outline-none" title="Notifications">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                        </button>
-                        
-                        <div class="relative">
-                            <button id="user-menu" class="flex items-center space-x-2 focus:outline-none">
-                                <?php if (!empty($current_user['profile_picture'])): ?>
-                                    <img src="<?= htmlspecialchars($current_user['profile_picture']) ?>" 
-                                        alt="Profile Picture" 
-                                        class="h-8 w-8 rounded-full object-cover">
-                                <?php else: ?>
-                                    <div class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
-                                        <?= $current_user['initials'] ?>
-                                    </div>
-                                <?php endif; ?>
-                                <svg class="h-5 w-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </button>
-                            
-                            <div id="user-menu-dropdown" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 py-1 z-50 user-profile-dropdown">
-                                <div class="px-4 py-3 border-b">
-                                    <?php if (!empty($current_user['profile_picture'])): ?>
-                                        <img src="<?= htmlspecialchars($current_user['profile_picture']) ?>" 
-                                            alt="Profile Picture" 
-                                            class="h-10 w-10 rounded-full object-cover mb-2 mx-auto">
-                                    <?php endif; ?>
-                                    <div class="text-center">
-                                        <p class="text-sm font-medium text-gray-900"><?= htmlspecialchars($current_user['name']) ?></p>
-                                        <p class="text-xs text-gray-800 truncate"><?= htmlspecialchars($current_user['email']) ?></p>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                                <?= htmlspecialchars($current_user['role']) ?>
-                                            </span>
-                                        </p>
-                                    </div>
-                                </div>
-                                <a href="profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-user-circle mr-2"></i> Your Profile
-                                </a>
-                                <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-cog mr-2"></i> Settings
-                                </a>
-                                <a href="logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                    <i class="fas fa-sign-out-alt mr-2"></i> Sign out
-                                </a>
+                </div>
+            </header>
+
+            <!-- Dashboard Content -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+                
+                <!-- Key Metrics Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- Total Crops -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-green-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Total Crops</p>
+                                <h3 class="text-2xl font-bold text-gray-900 mt-1"><?= $analytics['crops']['total_crops'] ?? 0 ?></h3>
                             </div>
+                            <div class="p-2 bg-green-50 rounded-lg">
+                                <i class="fas fa-seedling text-green-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm text-gray-600">
+                            <span class="text-green-600 font-medium mr-2"><?= $analytics['crops']['active_crops'] ?? 0 ?></span> Active
+                            <span class="mx-2">•</span>
+                            <span><?= $analytics['crops']['total_area'] ?? 0 ?> Acres</span>
+                        </div>
+                    </div>
+
+                    <!-- Livestock Health -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Total Livestock</p>
+                                <h3 class="text-2xl font-bold text-gray-900 mt-1"><?= $analytics['livestock']['total_animals'] ?? 0 ?></h3>
+                            </div>
+                            <div class="p-2 bg-blue-50 rounded-lg">
+                                <i class="fas fa-paw text-blue-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm text-gray-600">
+                            <span class="text-green-600 font-medium mr-2"><?= $analytics['livestock']['healthy'] ?? 0 ?></span> Healthy
+                            <span class="mx-2">•</span>
+                            <span class="text-red-500 font-medium"><?= $analytics['livestock']['sick'] ?? 0 ?></span> Sick
+                        </div>
+                    </div>
+
+                    <!-- Task Efficiency -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-yellow-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Pending Tasks</p>
+                                <h3 class="text-2xl font-bold text-gray-900 mt-1"><?= $analytics['tasks']['pending'] ?? 0 ?></h3>
+                            </div>
+                            <div class="p-2 bg-yellow-50 rounded-lg">
+                                <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm text-gray-600">
+                            <span class="text-blue-600 font-medium mr-2"><?= $analytics['tasks']['in_progress'] ?? 0 ?></span> In Progress
+                            <span class="mx-2">•</span>
+                            <span class="text-green-600 font-medium"><?= $analytics['tasks']['completed'] ?? 0 ?></span> Done
+                        </div>
+                    </div>
+
+                    <!-- Inventory Status -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 card-hover border-l-4 border-red-500">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-500">Low Stock Items</p>
+                                <h3 class="text-2xl font-bold text-gray-900 mt-1"><?= $analytics['inventory']['low_stock'] ?? 0 ?></h3>
+                            </div>
+                            <div class="p-2 bg-red-50 rounded-lg">
+                                <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm text-gray-600">
+                            <span>Total Items: <?= $analytics['inventory']['total_items'] ?? 0 ?></span>
                         </div>
                     </div>
                 </div>
 
-                
-            </header>
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Crop Distribution Chart -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Crop Distribution</h3>
+                        <div class="h-64">
+                            <canvas id="cropChart"></canvas>
+                        </div>
+                    </div>
 
+                    <!-- Livestock Distribution Chart -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Livestock Composition</h3>
+                        <div class="h-64">
+                            <canvas id="livestockChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Progress Section -->
+                <div class="bg-white p-6 rounded-xl shadow-sm mb-8">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Task Status Overview</h3>
+                    <div class="relative pt-1">
+                        <div class="flex mb-2 items-center justify-between">
+                            <div>
+                                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                                    Completion Rate
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-semibold inline-block text-blue-600">
+                                    <?php 
+                                        $total = $analytics['tasks']['total_tasks'] ?: 1;
+                                        $completed = $analytics['tasks']['completed'];
+                                        echo round(($completed / $total) * 100) . "%";
+                                    ?>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                            <div style="width:<?= round(($completed / $total) * 100) ?>%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
         </div>
-        </div>   
+    </div>
+
+    <!-- Chart Initialization -->
+    <script>
+        // Prepare Data from PHP
+        const cropData = <?= json_encode($analytics['crop_types']) ?>;
+        const livestockData = <?= json_encode($analytics['livestock_types']) ?>;
+
+        // Crop Chart
+        const cropCtx = document.getElementById('cropChart').getContext('2d');
+        new Chart(cropCtx, {
+            type: 'doughnut',
+            data: {
+                labels: cropData.map(item => item.crop_type),
+                datasets: [{
+                    data: cropData.map(item => item.count),
+                    backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+
+        // Livestock Chart
+        const livestockCtx = document.getElementById('livestockChart').getContext('2d');
+        new Chart(livestockCtx, {
+            type: 'bar',
+            data: {
+                labels: livestockData.map(item => item.type),
+                datasets: [{
+                    label: 'Count',
+                    data: livestockData.map(item => item.count),
+                    backgroundColor: '#3B82F6',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

@@ -10,7 +10,7 @@ if (isset($_SESSION['logged_in'])) {
 // Database configuration
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', 'root');
+define('DB_PASS', '');
 define('DB_NAME', 'agri_vision_pro');
 
 // Establish database connection
